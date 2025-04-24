@@ -1,6 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
-import chatRoutes from "./routes/chat.js";
+import chatRoutes from "./src/routes/chat.js";
 import cors from "cors";
 
 dotenv.config();
@@ -10,7 +10,7 @@ app.use(express.json()); // This is required to parse JSON in POST requests
 
 app.use(
   cors({
-    origin: "http://localhost:3000", // Allow only requests from this origin
+    origin: process.env.DeployLink || "http://localhost:3000", // Allow only requests from this origin
     methods: ["GET", "POST"], // Allow GET and POST methods
   })
 );
