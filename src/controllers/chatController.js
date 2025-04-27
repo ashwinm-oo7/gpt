@@ -48,7 +48,7 @@ export async function streamChat(req, res) {
     const existingChat = await Chat.findOne({ _id: chatId, userId });
 
     if (!existingChat) {
-      return res.status(404).json({ error: "Chat ID not found for the user." });
+      // return res.status(404).json({ error: "Chat ID not found for the user." });
     }
   }
 
@@ -142,37 +142,37 @@ Now continue the conversation smartly.
         }
       }
     }
-    if (lastUserMessage.includes("MauryaSaved")) {
-      // Save some data to your database (customize what you save)
-      const userChat = await ReservedChat.findOne({ userId });
+    // if (lastUserMessage.includes("MauryaSaved")) {
+    //   const userChat = await ReservedChat.findOne({ userId });
 
-      if (!userChat) {
-        const newChat = new ReservedChat({
-          userId,
-          topic: topic || "Saved Data",
-          messages: [
-            { role: "user", content: lastUserMessage },
-            { role: "bot", content: generatedText },
-          ],
-        });
-        await newChat.save();
-      } else {
-        await Chat.findOneAndUpdate(
-          { _id: chatId, userId },
-          {
-            $push: {
-              messages: {
-                $each: [
-                  { role: "user", content: lastUserMessage },
-                  { role: "bot", content: generatedText },
-                ],
-              },
-            },
-          },
-          { new: true }
-        );
-      }
-    }
+    //   if (!userChat) {
+    //     const newChat = new ReservedChat({
+    //       userId,
+    //       topic: topic || "Saved Data",
+    //       messages: [
+    //         { role: "user", content: lastUserMessage },
+    //         { role: "bot", content: generatedText },
+    //       ],
+    //     });
+    //     await newChat.save();
+    //   } else {
+    //     await Chat.findOneAndUpdate(
+    //       { _id: chatId, userId },
+    //       {
+    //         $push: {
+    //           messages: {
+    //             $each: [
+    //               { role: "user", content: lastUserMessage },
+    //               { role: "bot", content: generatedText },
+    //             ],
+    //           },
+    //         },
+    //       },
+    //       { new: true }
+    //     );
+    //   }
+    // }
+    console.log(generatedText);
     res.json({ content: generatedText });
   } catch (error) {
     console.error("Gemini error:", error);
