@@ -38,10 +38,34 @@ dotenv.config();
 const app = express();
 app.use(express.json()); // This is required to parse JSON in POST requests
 
+// app.use(
+//   cors({
+//     origin: process.env.DeployLink || "http://localhost:3000",
+
+//     methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
+//   })
+// );
+
+const allowedOrigins = ["http://localhost:3000"];
+
+if (process.env.DeployLink) {
+  allowedOrigins.push(process.env.DeployLink);
+}
+
 app.use(
   cors({
-    origin: process.env.DeployLink || "http://localhost:3000", // Allow only requests from this origin
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(
+          new Error(`CORS policy does not allow access from origin ${origin}`)
+        );
+      }
+    },
     methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
+    credentials: true,
   })
 );
 

@@ -172,7 +172,7 @@ Now continue the conversation smartly.
     //     );
     //   }
     // }
-    console.log(generatedText);
+
     res.json({ content: generatedText });
   } catch (error) {
     console.error("Gemini error:", error);
