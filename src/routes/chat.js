@@ -11,6 +11,7 @@ import optionalAuthMiddleware from "../middlewares/optionalAuthMiddleware.js";
 import Chat from "../models/Chat.js";
 
 router.post("/savedchat/:chatId", optionalAuthMiddleware, streamChat);
+router.post("/savedchat", optionalAuthMiddleware, streamChat);
 router.get("/chat/history/:chatId", optionalAuthMiddleware, getChatHistory);
 // 📜 Reset (Clear) Chat History for Logged In User
 router.delete("/chat/reset/:chatId", optionalAuthMiddleware, resetChatHistory);

@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import chatRoutes from "./src/routes/chat.js";
 import LoginRoutes from "./src/routes/auth.js";
 import mongoose from "mongoose";
+import User from "./src/models/user.js"; // adjust path as needed
 
 const requiredEnvVars = [
   "MONGO_USERNAME",

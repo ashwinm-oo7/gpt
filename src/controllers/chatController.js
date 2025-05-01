@@ -18,8 +18,8 @@ const __dirname = path.dirname(__filename);
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Helper function to read markdown file
-const readMarkdownFile = () => {
-  const filePath = path.join(__dirname, "./GPA_DEMO_Sections.md"); // Adjust path if needed
+const readMarkdownFilewait = () => {
+  const filePath = path.join(__dirname, "./GPA_DEMO_Sections.md");
   try {
     const data = fs.readFileSync(filePath, "utf8");
     return data;
@@ -29,12 +29,73 @@ const readMarkdownFile = () => {
   }
 };
 
+const readMarkdownFile = () => {
+  const files = ["./GPA_DEMO_Sections.md", "./FCI.md"]; // Add more files as needed
+  let combinedContent = "";
+
+  files.forEach((file) => {
+    const filePath = path.join(__dirname, file);
+    try {
+      const data = fs.readFileSync(filePath, "utf8");
+      combinedContent += `\n\n---\n\nFile: ${path.basename(file)}\n\n${data}`;
+    } catch (error) {
+      console.error(`Error reading file ${file}:`, error);
+      combinedContent += `\n\nFile: ${file} could not be read.\n`;
+    }
+  });
+
+  return combinedContent || "No setup files could be loaded.";
+};
+
+async function retryWithBackoff(fn, retries = 8, delay = 1000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      const backoff = delay * Math.pow(2, i) + Math.random() * 1000;
+      console.warn(`Retrying due to 503... (${i + 1})`);
+      await new Promise((resolve) => setTimeout(resolve, backoff));
+    }
+  }
+}
+
+export async function newChat(req, res) {
+  try {
+    const userId = req.user?.userId || req.body.userID || null;
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ message: "Unauthorized. Please login to start a new chat." });
+    }
+
+    const { topic } = req.body; // Optional: You can pass a topic with the new chat
+
+    const newChat = new Chat({
+      userId,
+      topic: topic || "General", // Default topic if none is provided
+      messages: [],
+    });
+
+    await newChat.save();
+
+    res.json({
+      message: "New chat started successfully!",
+      chatId: newChat._id, // Send the unique chat ID to the frontend
+      chat: newChat,
+    });
+  } catch (error) {
+    console.error("Error starting new chat:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+}
 // Main chat handler
 export async function streamChat(req, res) {
   const userId = req.user?.userId || req.body.userID || null;
-  const chatId = req.params.chatId;
+  const chatId = req.params.chatId || null;
   const conversation = req.body.conversation || []; // Full chat history
-  const { topic } = req.body;
+  const { topic, replyTo } = req.body;
 
   // const userPrompt = req.body.messages;
   const systemMessageContent = readMarkdownFile();
@@ -42,15 +103,16 @@ export async function streamChat(req, res) {
   res.setHeader("Content-Type", "application/json");
   res.setHeader("Cache-Control", "no-cache");
   if (!conversation || conversation.length === 0) {
-    return res.status(400).json({ error: "No conversation provided." });
+    // return res.status(400).json({ error: "No conversation provided." });
   }
-  if (chatId) {
-    const existingChat = await Chat.findOne({ _id: chatId, userId });
 
-    if (!existingChat) {
-      // return res.status(404).json({ error: "Chat ID not found for the user." });
-    }
-  }
+  // if (chatId) {
+  //   const existingChat = await Chat.findOne({ _id: chatId, userId });
+
+  //   if (!existingChat) {
+  //     return res.status(404).json({ error: "Chat ID not found for the user." });
+  //   }
+  // }
 
   try {
     const chatHistoryFormatted = conversation
@@ -58,32 +120,46 @@ export async function streamChat(req, res) {
         return `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`;
       })
       .join("\n");
+    let replyMessageContent = "";
+    if (replyTo) {
+      const repliedMessage = conversation.find((msg) => msg._id === replyTo);
+      if (repliedMessage) {
+        replyMessageContent = `
+            User is replying to this message:
+            User's Message: ${repliedMessage.content}
+          `;
+      }
+    }
+
     const fullPrompt = `
       You are an ERP software assistant. Here are the system setup details:
       ${systemMessageContent}
 Here is the conversation so far:
 ${chatHistoryFormatted}
+${replyMessageContent}
 
 Now continue the conversation smartly.
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-001",
-      contents: [
-        {
-          role: "user",
-          // parts: [
-          //   {
-          //     text: `You are an ERP software assistant. Here's the system setup:\n\n${systemMessageContent}\n\nUser query: ${userPrompt}`,
-          //   },
-          // ],
-          parts: [{ text: fullPrompt }],
-        },
-      ],
-    });
+    const response = await retryWithBackoff(() =>
+      ai.models.generateContent({
+        model: "gemini-2.0-flash-001",
+        contents: [
+          {
+            role: "user",
+            // parts: [
+            //   {
+            //     text: `You are an ERP software assistant. Here's the system setup:\n\n${systemMessageContent}\n\nUser query: ${userPrompt}`,
+            //   },
+            // ],
+            parts: [{ text: fullPrompt }],
+          },
+        ],
+      })
+    );
 
     // Log the full response to debug the structure
-    // console.log("Gemini Response: ", JSON.stringify(response, null, 2));
+    console.log("Gemini Response: ", JSON.stringify(response, null, 2));
 
     // Access the text safely
     const generatedText =
@@ -98,6 +174,9 @@ Now continue the conversation smartly.
     const lastUserMessage =
       conversation[conversation.length - 1]?.content || "";
     const userChat = await Chat.findOne({ userId });
+
+    // const reservedChat = await ReservedChat.findOne({ userId });
+
     if (userId) {
       if (!userChat) {
         // No previous chat data exists, create a new one
@@ -138,40 +217,41 @@ Now continue the conversation smartly.
               { role: "bot", content: generatedText },
             ],
           });
-          await newChat.save();
+          const savedChat = await newChat.save();
+          chatId = savedChat._id; // Assign new chatId for further use
         }
       }
     }
-    // if (lastUserMessage.includes("MauryaSaved")) {
-    //   const userChat = await ReservedChat.findOne({ userId });
+    if (lastUserMessage.includes("MauryaSaved")) {
+      const userChat = await ReservedChat.findOne({ userId });
 
-    //   if (!userChat) {
-    //     const newChat = new ReservedChat({
-    //       userId,
-    //       topic: topic || "Saved Data",
-    //       messages: [
-    //         { role: "user", content: lastUserMessage },
-    //         { role: "bot", content: generatedText },
-    //       ],
-    //     });
-    //     await newChat.save();
-    //   } else {
-    //     await Chat.findOneAndUpdate(
-    //       { _id: chatId, userId },
-    //       {
-    //         $push: {
-    //           messages: {
-    //             $each: [
-    //               { role: "user", content: lastUserMessage },
-    //               { role: "bot", content: generatedText },
-    //             ],
-    //           },
-    //         },
-    //       },
-    //       { new: true }
-    //     );
-    //   }
-    // }
+      if (!userChat) {
+        const newChat = new ReservedChat({
+          userId,
+          topic: topic || "Saved Data",
+          messages: [
+            { role: "user", content: lastUserMessage },
+            { role: "bot", content: generatedText },
+          ],
+        });
+        await newChat.save();
+      } else {
+        await Chat.findOneAndUpdate(
+          { _id: chatId, userId },
+          {
+            $push: {
+              messages: {
+                $each: [
+                  { role: "user", content: lastUserMessage },
+                  { role: "bot", content: generatedText },
+                ],
+              },
+            },
+          },
+          { new: true }
+        );
+      }
+    }
 
     res.json({ content: generatedText });
   } catch (error) {
@@ -285,37 +365,6 @@ export async function getChatById(req, res) {
     res.json({ conversations: chats });
   } catch (error) {
     console.error("Error fetching chat history:", error);
-    res.status(500).json({ message: "Server Error" });
-  }
-}
-
-export async function newChat(req, res) {
-  try {
-    const userId = req.user?.userId || req.body.userID || null;
-
-    if (!userId) {
-      return res
-        .status(401)
-        .json({ message: "Unauthorized. Please login to start a new chat." });
-    }
-
-    const { topic } = req.body; // Optional: You can pass a topic with the new chat
-
-    const newChat = new Chat({
-      userId,
-      topic: topic || "General", // Default topic if none is provided
-      messages: [],
-    });
-
-    await newChat.save();
-
-    res.json({
-      message: "New chat started successfully!",
-      chatId: newChat._id, // Send the unique chat ID to the frontend
-      chat: newChat,
-    });
-  } catch (error) {
-    console.error("Error starting new chat:", error);
     res.status(500).json({ message: "Server Error" });
   }
 }
