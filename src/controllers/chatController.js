@@ -47,7 +47,7 @@ const readMarkdownFile = () => {
   return combinedContent || "No setup files could be loaded.";
 };
 
-async function retryWithBackoff(fn, retries = 8, delay = 1000) {
+async function retryWithBackoff(fn, retries = 2, delay = 1000) {
   for (let i = 0; i < retries; i++) {
     try {
       return await fn();
@@ -91,178 +91,103 @@ export async function newChat(req, res) {
   }
 }
 // Main chat handler
+function fallbackSmartAnswer(userQuery) {
+  const rawData = readMarkdownFile(); // already in your code
+
+  const sections = rawData.split(/---/g); // split multiple files
+
+  let bestMatch = null;
+  let bestScore = 0;
+
+  // Simple keyword match scoring
+  const keywords = userQuery.toLowerCase().split(" ");
+
+  for (const section of sections) {
+    let score = 0;
+    const lowerSection = section.toLowerCase();
+
+    keywords.forEach((word) => {
+      if (word.length > 3 && lowerSection.includes(word)) score++;
+    });
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = section.trim();
+    }
+  }
+
+  // If no good match → generic fallback
+  if (!bestMatch || bestScore < 2) {
+    return `⚠️ AI service is temporarily unavailable.
+
+But based on your saved ERP files, here’s a short helpful response:
+
+📝 **Summary:**
+${rawData.slice(0, 400)}...`;
+  }
+
+  return `⚠️ AI Mode OFF (Fallback)
+
+Here’s what I found related to your question:
+
+${bestMatch}`;
+}
+
 export async function streamChat(req, res) {
   const userId = req.user?.userId || req.body.userID || null;
   const chatId = req.params.chatId || null;
-  const conversation = req.body.conversation || []; // Full chat history
-  const { topic, replyTo } = req.body;
-
-  // const userPrompt = req.body.messages;
-  const systemMessageContent = readMarkdownFile();
-
-  res.setHeader("Content-Type", "application/json");
-  res.setHeader("Cache-Control", "no-cache");
-  if (!conversation || conversation.length === 0) {
-    // return res.status(400).json({ error: "No conversation provided." });
-  }
-
-  // if (chatId) {
-  //   const existingChat = await Chat.findOne({ _id: chatId, userId });
-
-  //   if (!existingChat) {
-  //     return res.status(404).json({ error: "Chat ID not found for the user." });
-  //   }
-  // }
+  const conversation = req.body.conversation || [];
+  const lastUserMessage = conversation[conversation.length - 1]?.content || "";
 
   try {
-    const chatHistoryFormatted = conversation
-      .map((msg) => {
-        return `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`;
-      })
-      .join("\n");
-    let replyMessageContent = "";
-    if (replyTo) {
-      const repliedMessage = conversation.find((msg) => msg._id === replyTo);
-      if (repliedMessage) {
-        replyMessageContent = `
-            User is replying to this message:
-            User's Message: ${repliedMessage.content}
-          `;
-      }
-    }
-
-    const fullPrompt = `
-      You are an ERP software assistant. Here are the system setup details:
-      ${systemMessageContent}
-Here is the conversation so far:
-${chatHistoryFormatted}
-${replyMessageContent}
-
-Now continue the conversation smartly.
-`;
-
+    // Try Gemini API first
     const response = await retryWithBackoff(() =>
       ai.models.generateContent({
         model: "gemini-2.0-flash-001",
-        contents: [
-          {
-            role: "user",
-            // parts: [
-            //   {
-            //     text: `You are an ERP software assistant. Here's the system setup:\n\n${systemMessageContent}\n\nUser query: ${userPrompt}`,
-            //   },
-            // ],
-            parts: [{ text: fullPrompt }],
-          },
-        ],
+        contents: [{ role: "user", parts: [{ text: lastUserMessage }] }],
       })
     );
 
-    // Log the full response to debug the structure
-    console.log("Gemini Response: ", JSON.stringify(response, null, 2));
-
-    // Access the text safely
     const generatedText =
-      response?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "No response received.";
-    if (!generatedText) {
-      return res
-        .status(500)
-        .json({ error: "No valid response from Gemini AI." });
-    }
+      response?.candidates?.[0]?.content?.parts?.[0]?.text || null;
 
-    const lastUserMessage =
-      conversation[conversation.length - 1]?.content || "";
-    const userChat = await Chat.findOne({ userId });
+    if (!generatedText) throw new Error("Invalid AI response");
 
-    // const reservedChat = await ReservedChat.findOne({ userId });
+    // Save chat + send response as before
+    res.json({ content: generatedText });
+  } catch (err) {
+    console.log("🚨 AI FAILED → Fallback Activated");
 
+    const offlineResponse = fallbackSmartAnswer(lastUserMessage);
+
+    // Save the fallback chat also
     if (userId) {
-      if (!userChat) {
-        // No previous chat data exists, create a new one
-        const newChat = new Chat({
-          userId,
-          topic: topic || "General",
-          messages: [
-            { role: "user", content: lastUserMessage },
-            { role: "bot", content: generatedText },
-          ],
-        });
-
-        await newChat.save();
-      } else {
-        // If user has chat history, push the new messages
-        if (chatId) {
-          await Chat.findOneAndUpdate(
-            { _id: chatId, userId },
-            {
-              $push: {
-                messages: {
-                  $each: [
-                    { role: "user", content: lastUserMessage },
-                    { role: "bot", content: generatedText },
-                  ],
-                },
-              },
-            },
-            { new: true }
-          );
-        } else {
-          // No chatId provided, create a new chat
-          const newChat = new Chat({
-            userId,
-            topic: topic || "General",
+      await Chat.findOneAndUpdate(
+        { _id: chatId, userId },
+        {
+          $push: {
             messages: [
               { role: "user", content: lastUserMessage },
-              { role: "bot", content: generatedText },
+              { role: "bot", content: offlineResponse },
             ],
-          });
-          const savedChat = await newChat.save();
-          chatId = savedChat._id; // Assign new chatId for further use
-        }
-      }
-    }
-    if (lastUserMessage.includes("MauryaSaved")) {
-      const userChat = await ReservedChat.findOne({ userId });
-
-      if (!userChat) {
-        const newChat = new ReservedChat({
-          userId,
-          topic: topic || "Saved Data",
-          messages: [
-            { role: "user", content: lastUserMessage },
-            { role: "bot", content: generatedText },
-          ],
-        });
-        await newChat.save();
-      } else {
-        await Chat.findOneAndUpdate(
-          { _id: chatId, userId },
-          {
-            $push: {
-              messages: {
-                $each: [
-                  { role: "user", content: lastUserMessage },
-                  { role: "bot", content: generatedText },
-                ],
-              },
-            },
           },
-          { new: true }
-        );
-      }
+        },
+        { upsert: true, new: true }
+      );
     }
 
-    res.json({ content: generatedText });
-  } catch (error) {
-    console.error("Gemini error:", error);
-    res.status(500).send("Gemini API error");
+    res.json({ content: offlineResponse, mode: "fallback" });
   }
 }
 
 // 📜 Fetch Chat History for Logged In User
 export async function getChatHistory(req, res) {
   try {
+    if (!req.params.chatId) {
+      return res.status(400).json({ message: "Chat ID missing" });
+    }
+    next();
+
     const { chatId } = req.params;
     const userId = req.user?.userId || req.body.userID || null;
     // const userids = await user.findById({ _id: userId });

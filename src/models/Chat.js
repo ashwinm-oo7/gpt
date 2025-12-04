@@ -6,7 +6,7 @@ const chatSchema = new mongoose.Schema({
     ref: "User",
     required: false,
   }, // Optional for without-login
-  topic: { type: String, required: true }, // Topic of conversation
+  topic: { type: String, required: false }, // Topic of conversation
   messages: [
     {
       role: { type: String, enum: ["user", "bot"], required: true },

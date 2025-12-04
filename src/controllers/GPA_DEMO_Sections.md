@@ -437,7 +437,7 @@ Like the form fields, these values are also generally PIDs pointing to master ta
 - But always remember LoadSQL will compulsory mentioned in the Grid.  
 - In LoadSql when we used where clause 'Where maintable.sabid=?sabid) it means Grid table which is main table of Loadsql section Query'.
 - example : suppose Grid table have a bsab40 which will be main table of Grid and this table will be Loadsql section Query
-- example code : 
+- This is just example code : 
 - ```sql
    select a.prodid,a.dsnoid,a.shade,a.qty,a.rate,a.amount,a.sno,a.sabrowid from bsab40 a
     ```
@@ -451,6 +451,7 @@ Like the form fields, these values are also generally PIDs pointing to master ta
 	 
 	 ```
 - If you see i have taken the alias of a.prodid prodid,b.bname prodid because a.prodid store the pid value of asab15 table like in which column we take the help in that we store the pid so its means that column id value so i have taken in last columnnameid,and in the bname column value which columnname which is in grid columnname exact so suppose which is proid is column in grid so we take the naming of bname column alias that same name and the pid column which a.prodid will be prodidid. system will get understood which column have pid column have it that why we do this format.
+- bsab40 its a main table of Grid in which we create in sabtopleft table and cntltype column which value is sumsabgrid that why this is Grid in that TableName column value will be something there so that value will be main table of Grid.
    
 ### 5.4 Auto Join and Display Logic
   For fields such as party, prodid, shade,pprodid,pdsnoid etc. that store PID:
@@ -581,6 +582,7 @@ Sql = SELECT a.*, b.help_column FROM tablename a
 
 ### Complete Example of [LoadSql] Section
 - [LoadSql] this is format to write the sections
+  
 ```sql
 Sql = SELECT a.proid prodidid, b.bname proid,a.sno 
       FROM asab40 a
@@ -588,6 +590,7 @@ Sql = SELECT a.proid prodidid, b.bname proid,a.sno
 Whr = WHERE a.sabid = ?sabid)
 Ord = ORDER BY a.sno
 ```
+
 *	Explanation:
 - ?sabid): This is used for current form current record sabid fetch it means in Grid we used in the where clause for fetching current record data sabid data fetch in the grid.
 - ?cloumnName) : This is syntax current form column value fetch on current record shown in the screen,this syntax created in the software backend side.   

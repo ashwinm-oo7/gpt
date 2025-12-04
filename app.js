@@ -4,6 +4,9 @@ import chatRoutes from "./src/routes/chat.js";
 import LoginRoutes from "./src/routes/auth.js";
 import mongoose from "mongoose";
 import User from "./src/models/user.js"; // adjust path as needed
+import searchEngineRoutes from "./src/routes/searchEngine.js";
+import generatorRoutes from "./src/routes/generator.js";
+import aiRouter from "./src/aiEngine/router.js";
 
 const requiredEnvVars = [
   "MONGO_USERNAME",
@@ -73,6 +76,9 @@ app.use(
 // Use the chat routes
 app.use("/chats", chatRoutes);
 app.use("/api/auth", LoginRoutes);
+app.use("/search-engine", searchEngineRoutes);
+app.use("/ai-generator", generatorRoutes);
+app.use("/ai", aiRouter);
 
 // Start the server
 const PORT = process.env.PORT || 5000;
