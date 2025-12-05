@@ -49,7 +49,7 @@ function detectSection(text) {
 
 // Lightweight templates and SQL generators (expandable)
 function pageheaderExplain() {
-  return `📘 PageHeader View Explanation
+  return `📘 **PageHeader View Explanation**
 
 A PageHeader view is used for top-level fields like:
 - EntNo
@@ -57,8 +57,12 @@ A PageHeader view is used for top-level fields like:
 - Party details
 - Horizontal line (line1)
 
+------------------------------------------------------------
+🔷 **Mandatory Columns**
+------------------------------------------------------------
 ### Mendatory column in this view is:colname ,bname,sabid
-  a)colname:used for understand what kind of data for a developer understand also usedcase for connectivity design alignment location in the table sabrep_topleft.
+  a)colname:used for understand what kind of data for a developer  also usedcase 
+  for connectivity design alignment location in the table sabrep_topleft.
 Note:Later will explain
   b)bname: this bname value will be seen as a output in the Report.
   c)sabid:connectivity in report which record want to show at a time.
@@ -67,22 +71,38 @@ Note:Later will explain
    pageheader in which we mentioned debtor party  details and invoice no and date if they required in report:
  view name: sabrep_pageheader_?regcode)
    Note: ?regcode) means its dyanmic repcode that particular report which is mentioned in the sdl File repcode=xyz.so its mean (sabrep_pageheader_xyz)
-   
+ - **colname** → binds to sabrep_topleft.colname  
+- **bname** → printed value / keyword  
+- **sabid** → identifies which record to print  
+
+Meaning:
+- colname must match sabrep_topleft.colname  
+- bname appears as output unless it is a keyword  
+- sabid ensures only selected entry is printed  
+
 ------------------------------------------------------------
-🔷 Special Keywords (Used inside bname)
-- !heading → prints a formatted heading  
-- line     → draws a horizontal line  
-- vline    → draws a vertical line  
+🔷 **View Naming Rule**
+sabrep_pageheader_<regcode>
+
+Example:
+- sabrep_pageheader_chlf
+- sabrep_pageheader_inwe
+------------------------------------------------------------
+🔷 **Special Keywords (Used inside bname)**
+- **!heading** → prints a formatted heading  
+- **line**     → draws a horizontal line  
+- **vline**    → draws a vertical line  
   A1)!Heading: This is key will be used in the section for Dynamic store that Heading.
 
   A2)line: This keyword is reserved in the software for used case make a line in Horizontal Format.
    
   A3)vline: This keyword is reserved in the software for used case make a line in Vertical  Format.
 
+  
 These keywords generate layout elements instead of text.
 
 ------------------------------------------------------------
-🔷 Common Attributes (Used in section pageheader in the table sabrep_topleft_Box)
+🔷 **Common Attributes (Used in section pageheader in the table sabrep_topleft_Box)**
 - ttop      → top margin  
 - tleft     → left margin  
 - width     → container width  
@@ -101,14 +121,20 @@ Notes:
 - regcode dynamically selects the view  
 
 ------------------------------------------------------------
-🔷 Example View (pageheader_chlf)
+🔷 **Example View (pageheader_chlf)**
+------------------------------------------------------------
 
-CREATE  view sabrep_pageheader_chlf as             
-select 'Entno' colname,a.sabid,a.entno bname from tablename a             
-union all            
-select 'Entdt' ,a.sabid,convert(nvarchar,a.entdt,110)bname from tablename a             
-union all            
-select 'LINE1 ',a.sabid,'line' bname from tablename a         
+\`\`\`sql
+CREATE VIEW sabrep_pageheader_chlf AS             
+SELECT 'Entno' AS colname, a.sabid, a.entno AS bname 
+FROM tablename a             
+UNION ALL            
+SELECT 'Entdt', a.sabid, CONVERT(nvarchar, a.entdt, 110) AS bname 
+FROM tablename a            
+UNION ALL            
+SELECT 'line1', a.sabid, 'line' AS bname 
+FROM tablename a;
+\`\`\`
 
 
 ------------------------------------------------------------
@@ -125,7 +151,8 @@ select 'LINE1 ',a.sabid,'line' bname from tablename a
    - Identifies which company record to pull  
 
 ------------------------------------------------------------
-🔷 sabrep_topleft (Design Table) — Key Fields
+🔷 **sabrep_topleft (Design Table) — Key Fields**
+------------------------------------------------------------
 
 - repcode     → report identifier  
 - section     → companyheader  (companyheader section for the top page show the company details)
@@ -145,17 +172,23 @@ and tleft value will be disabled until width value more than 0 value.
 
 🧩 Naming Rule:
 sabrep_pageheader_<repcode>
+**Note:**  
+If width = 0 → value is auto-centered.  
 
-🧱 Example Structure:
+------------------------------------------------------------
+🧱 **Auto Template**
+\`\`\`sql
 CREATE VIEW sabrep_pageheader_<repcode> AS
-SELECT 'Entno' AS colname, a.sabid AS sabid, a.entno AS bname
+SELECT 'Entno' AS colname, a.sabid, a.entno AS bname
 FROM <tablename> a
 UNION ALL
 SELECT 'Entdt', a.sabid, CONVERT(nvarchar, a.entdt, 110) AS bname
 FROM <tablename> a
 UNION ALL
 SELECT 'line1', a.sabid, 'line' AS bname
-FROM <tablename> a;`;
+FROM <tablename> a;
+\`\`\`
+`;
 }
 
 function pageheaderExample() {
@@ -269,13 +302,7 @@ These define where and how the section prints on the page.
 
 function detailsExplain() {
   return `📘 Details View Explanation
-
-Used for repeating line-items.
-Mandatory columns:
-- sabid
-- all fields referenced in sabrep_topleft (e.g., sno, party, qty, rate)
-
-This section Defines in the Page mid container declared
+**details**: This section Defines in the Page mid container declared
    * This view represents the DETAILS SECTION of your report.
 In ERP reporting, the Details section is where all line-items or transaction rows appear.
    * This view supplies the exact data the report engine will repeat for every row in the “details” grid.
@@ -286,11 +313,47 @@ In ERP reporting, the Details section is where all line-items or transaction row
         *  For every section in a report, a view must exist whose name is: sabrep_?section)_?regcode)
         *  So for:
         * Section: details
-		* Regcode: chlf
+		* Repcode: chlf
 		* The engine automatically expects this view:		=> sabrep_details_chlf
 		➤ This view provides ALL the transaction rows that the “Details” part of the report should print.
+CREATE VIEW sabrep_details_chlf AS
+SELECT  
+    a.sabid,
+    a.sno,
+    asab9_a.person AS party,
+    asab9_a.pdukanno,
+    a.permit
+FROM bsab_trkchl_mid a 
+LEFT JOIN asab9 AS asab9_a ON a.party = asab9_a.pid;
+### Mendatory column in this view is:colname ,bname,sabid
+  * a) colname:used for understand what kind of data for a developer understand also usedcase for connectivity design alignment location in the table sabrep_topleft.
+Note:Later will explain
+  * b) bname: this bname value will be seen as a output in the Report.
+ * c) sabid:connectivity in report which record want to show at a time
+    * (sabid is the master key that tells your report engine which specific record is being printed.).
+  * Your engine always passes something like:
 
-        When user clicks PRINT REPORT:
+  WHERE sabid = ?sabid)
+***Note : ?columnname) it means current form any column values passed from that current open form.
+So only the rows belonging to this specific report entry print.***
+
+**sabrep_topleft table=>column wise explaination below:**
+* repcode: repcode of the report
+* section: pageheader section for the top page show the party or coustomer details.
+* ttop   : not work in details
+* tleft  : nor work in details
+* height : height of the cell 
+* width  : width of the cell 
+* line_left: not work in details
+* line_right: not work in details
+* line_bottom: not work in details
+* line_up : not work in details
+* line_height: not work in details
+* caption: not work in details
+* colname: colname exact same in the mentioned of view
+ sabrep_details_?Repcode). its dynamic regcode which report is mentioned.  
+ When Does the View Execute? (Runtime Flow)
+When user clicks PRINT REPORT:
 
 1) Report engine loads sabtopleft_report_up → gets sabid
 
@@ -312,8 +375,24 @@ In ERP reporting, the Details section is where all line-items or transaction row
    ➤ If 10 rows returned → 10 lines print in the Details Section
    ➤ If 0 rows returned → Details section prints empty
 
-The engine executes:
-SELECT * FROM sabrep_details_<repcode> WHERE sabid = @sabid`;
+6) Why Only These Columns?
+
+Because these are the columns your report design refers to.
+
+In sabrep_topleft, you will have rows like:
+| section | colname  | caption  |
+| ------- | -------- | -------- |
+| details | sno      | Sr.No    |
+| details | party    | Party    |
+| details | pdukanno | Dukan No |
+| details | permit   | Permit   |
+
+Meaning:
+
+Whatever colname is used in design must exist in this view
+
+If design has a column missing from this view → report shows blank
+`;
 }
 
 // SQL generators

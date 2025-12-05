@@ -399,7 +399,7 @@ In ERP reporting, the Details section is where all line-items or transaction row
         *  For every section in a report, a view must exist whose name is: sabrep_?section)_?regcode)
         *  So for:
         * Section: details
-		* Regcode: chlf
+		* Repcode: chlf
 		* The engine automatically expects this view:		=> sabrep_details_chlf
 		➤ This view provides ALL the transaction rows that the “Details” part of the report should print.
 ``` sql 
@@ -429,17 +429,17 @@ So only the rows belonging to this specific report entry print.***
 **sabrep_topleft table=>column wise explaination below:**
 * repcode: repcode of the report
 * section: pageheader section for the top page show the party or coustomer details.
-* ttop   : top left corner start
-* tleft  : page left side start
-* height : height of the container report 
-* width  : width of the container report
-* line_left: Container border line show in the left side
-* line_right: Container border line show in the right side
-* line_bottom: Container border line show in the bottom side
-* line_up : Container border line show in the up side
-* line_height: Container border height show in the top and bottom side and width for left and right side all four side line effect there size.
-* caption: caption show for value label
-* colname: colname exact same in the mentioned of view sabrep_pageheader_?regcode). its dynamic regcode which report is mentioned.  
+* ttop   : not work in details
+* tleft  : nor work in details
+* height : height of the cell 
+* width  : width of the cell 
+* line_left: not work in details
+* line_right: not work in details
+* line_bottom: not work in details
+* line_up : not work in details
+* line_height: not work in details
+* caption: not work in details
+* colname: colname exact same in the mentioned of view sabrep_details_?Repcode). its dynamic regcode which report is mentioned.  
 ```sql When Does the View Execute? (Runtime Flow)
 When user clicks PRINT REPORT:
 
