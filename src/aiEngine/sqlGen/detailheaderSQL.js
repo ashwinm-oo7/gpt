@@ -83,40 +83,40 @@ WHERE sabid = ?sabid
 
 ## 🔷 Container Attributes – detailheader (sabrep_topleft_Box)
 
-The **details container** itself (the big box where the grid starts) is defined in  \`sabrep_topleft_Box\` with **section = detailheader**.
+ - The **details container** itself (the big box where the grid starts) is defined in  \`sabrep_topleft_Box\` with **section = detailheader**.
 
-These attributes control **where the container appears** and **how its border looks**:
+ - These attributes control **where the container appears** and **how its border looks**:
 
-| Attribute        | Meaning                                                                                                      |
-|------------------|--------------------------------------------------------------------------------------------------------------|
-| **repcode**      | Report identifier                                                                                           |
-| **section**      | \`detailheader\` → defines the container for the details area (below pageheader)                            |
-| **ttop**         | Top margin (distance from top of page where the details container starts)                                   |
-| **tleft**        | *Not used* for details container                                                                            |
-| **width**        | Container width (by default: full width based on report section width for this repcode)                     |
-| **height**       | Container height (overall height of details block)                                                          |
-| **line_left**    | Show left border line                                                                                       |
-| **line_right**   | Show right border line                                                                                      |
-| **line_bottom**  | Show bottom border line                                                                                     |
-| **line_up**      | Show top border line                                                                                        |
-| **line_height**  | Border thickness / cell height effect for all four sides of the container                                   |
+ | Attribute        | Meaning                                                                                                      |
+ |------------------|--------------------------------------------------------------------------------------------------------------|
+ | **repcode**      | Report identifier                                                                                           |
+ |  **section**      | \`detailheader\` → defines the container for the details area (below pageheader)                            |
+ | **ttop**         | Top margin (distance from top of page where the details container starts)                                   |
+ | **tleft**        | *Not used* for details container                                                                            |
+ | **width**        | Container width (by default: full width based on report section width for this repcode)                     |
+ | **height**       | Container height (overall height of details block)                                                          |
+ | **line_left**    | Show left border line                                                                                       |
+ | **line_right**   | Show right border line                                                                                      |
+ | **line_bottom**  | Show bottom border line                                                                                     |
+ | **line_up**      | Show top border line                                                                                        |
+ | **line_height**  | Border thickness / cell height effect for all four sides of the container                                   |
 
-> These attributes are for the **outer container** of the details section, not for each individual column.
+ > These attributes are for the **outer container** of the details section, not for each individual column.
 
 ## 📌 Visual Example (Details Section)
-Below image shows how the details grid appears inside a report:
+ - Below image shows how the details grid appears inside a report:
 
-![detailheader Section Example](/ai-images/details-layout.png)
+ - ![detailheader Section Example](/ai-images/details-layout.png)
 
 ---
-## Note: sab_details_?repcode)_view 
+## Note: sabrep_details_?repcode)_view 
 - This view purpose to get the column and there datatype used in the backend of software report.
 - Also used for sabrep_topleft table where colname column will be used for taking the help connectivity connection in design report.
 * ex : repcode=chlf
 \`\`\`sql
-create view sab_details_chlf_view as      
+create view sabrep_details_chlf_view as      
 SELECT ordinal_position pid ,column_name bname,column_name  head   FROM INFORMATION_SCHEMA.COLUMNS 
-WHERE TABLE_NAME = 'sab_details_chlf' 
+WHERE TABLE_NAME = 'sabrep_details_chlf' 
 
 \`\`\`
 
@@ -124,7 +124,7 @@ WHERE TABLE_NAME = 'sab_details_chlf'
 ## 🔷 Column Layout – sabrep_topleft (section = details)
 
 Inside the details container, each **column** (Sr.No, Party, Permit, etc.) is defined in  
-\`sabrep_topleft\` with **section = details**.
+ - \`sabrep_topleft\` with **section = details**.
 
 Here each row describes **one visible column** in the grid.
 
@@ -164,7 +164,7 @@ Here each row describes **one visible column** in the grid.
 
       - Here Party = Rahul Traders repeats in every row, which looks messy and is unnecessary.
 
-    - With Suppress = true, output becomes: \`Suppress=Y\`
+      - With Suppress = true, output becomes: \`Suppress=Y\`
 
       | Sno | Party         | Item | Qty |
       | --- | ------------- | ---- | --- |
@@ -176,30 +176,30 @@ Here each row describes **one visible column** in the grid.
 
       - The value is printed only in the first row, and then suppressed (hidden) in subsequent rows.
 
-| Attribute    | Meaning                                                                                                                                                                                                            |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Suppress** | If consecutive rows contain the **same value**, this option prints the value only in the **first occurrence** and suppresses (hides) it in all following rows. Used to avoid repetition and keep the report clean. |
+      | Attribute    | Meaning                                                                                                                                                                                                            |
+      | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+      | **Suppress** | If consecutive rows contain the **same value**, this option prints the value only in the **first occurrence** and suppresses (hides) it in all following rows. Used to avoid repetition and keep the report clean. |
 
 📌 **Rule:**  
-> Whatever **colname** is used in **\`sabrep_topleft\`** for **section = details**  
-> **must exist as a column in the details view**.
+  > Whatever **colname** is used in **\`sabrep_topleft\`** for **section = details**  
+  > **must exist as a column in the details view**.
 
-Example rows in \`sabrep_topleft\`:
+  - Example rows in \`sabrep_topleft\`:
 
-| section | colname  | caption  |
-|--------|----------|----------|
-| details | sno      | Sr.No    |
-| details | party    | Party    |
-| details | pdukanno | Dukan No |
-| details | permit   | Permit   |
+     | section | colname  | caption  |
+     |--------|----------|----------|
+     | details | sno      | Sr.No    |
+     | details | party    | Party    |
+     | details | pdukanno | Dukan No |
+     | details | permit   | Permit   |
 
-* If any colname (e.g. \`party\`) is not present as a column in \`sabrep_details_<repcode>\`, then that column will be **invisible**.
+  * If any colname (e.g. \`party\`) is not present as a column in \`sabrep_details_<repcode>\`, then that column will be **invisible**.
 
 ---
 
 ## 🔷 Runtime Flow – When Does the Details View Execute?
 
-When the user clicks **PRINT REPORT**:
+ - When the user clicks **PRINT REPORT**:
 
 1. **Load master record**  
    - Engine reads \`sabtopleft_report_up\` and gets **sabid** of the current entry.
@@ -209,8 +209,7 @@ When the user clicks **PRINT REPORT**:
    - From \`sabrep_topleft_Box\` → gets containers (companyheader box, detailheader box, etc.)
 
 3. **Find details view**  
-   - For section = details and repcode = \`chlf\`, it looks for:  
-     \`sabrep_details_chlf\`
+   - For section = details and repcode = \`chlf\`, it looks for : \`sabrep_details_chlf\`
 
 4. **Execute details view**  
    - Engine runs:

@@ -39,7 +39,7 @@ A PageHeader view is used for top-level fields like:
  * pageheader in which we mentioned debtor party  details and invoice no and date if they required in report:
  * view name: sabrep_pageheader_?repcode)
 ## Note:
-* ?repcode) means its dyanmic repcode that particular report which is mentioned in the SDL File section **Sabreport** key **repcode**=xyz.so its mean (sabrep_pageheader_xyz)
+* ?repcode) means its dyanmic repcode that particular report which is mentioned in the SDL File section **Sabreport** key **repcode**=xyz.so its mean **sabrep_pageheader_xyz**
 
 
 ## Meaning:
@@ -49,11 +49,11 @@ A PageHeader view is used for top-level fields like:
 
 ------------------------------------------------------------
 ## 🔷 View Naming Rule 
-sabrep_pageheader_<repcode>
+ - sabrep_pageheader_<repcode>
 
-Example:
-- sabrep_pageheader_chlf
-- sabrep_pageheader_inwe
+ - Example:
+  - sabrep_pageheader_chlf
+  - sabrep_pageheader_inwe
 ------------------------------------------------------------
 ## 🔷 Special Keywords (inside **bname**)
 
@@ -68,7 +68,7 @@ Example:
   - **line**     : This keyword is reserved in the software for used case make a line in Horizontal Format.
   - **vline**    : This keyword is reserved in the software for used case make a line in Vertical  Format.
 
-These keywords generate **layout elements**, not plain text.
+  ### These keywords generate **layout elements**, not plain text.
 
 ------------------------------------------------------------
 ## 🔷 Common Attributes  
