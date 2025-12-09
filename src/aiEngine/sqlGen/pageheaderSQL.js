@@ -142,7 +142,7 @@ FROM tablename a;
 | **line_height** | border height/thickness |
 | **bold** | **1/0** Makes the text appear in bold style when printed in the report. |
 | **align** | text start from the (left/right/centre) this three option. |
-| **visible**|(1/0) values: The visible attribute decides whether this column should be shown to the user in the report output.\n The field still exists in the view and the engine reads the value, but does not display it in the final report.|
+| **visible**|(1/0) values: The visible attribute decides whether this column should be shown to the user in the report output. The field still exists in the view and the engine reads the value, but does not display it in the final report.|
 
 ### Note  
 - If **width = 0**, the value becomes **auto-centered** and **tleft is ignored**.

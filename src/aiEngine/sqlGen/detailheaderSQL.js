@@ -104,9 +104,13 @@ WHERE sabid = ?sabid
  > These attributes are for the **outer container** of the details section, not for each individual column.
 
 ## 📌 Visual Example (Details Section)
- - Below image shows how the details grid appears inside a report:
+ - Below image shows how the details grid appears inside a report \`sabrep_topleft_box\` table in section column value \`detailheader\`:
 
- - ![detailheader Section Example](/ai-images/details-layout.png)
+ - ![detailheader Section Example](/ai-images/sabreptopleft_section.png)
+
+  - Below image shows how the details design appears inside a report in \`sabrep_topleft\` table:
+
+ - ![detailheader Section Example](/ai-images/sabrep_topleft_details.png)
 
 ---
 ## Note: sabrep_details_?repcode)_view 

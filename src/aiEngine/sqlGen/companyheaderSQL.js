@@ -49,6 +49,14 @@ This section appears at the **top of the first page** unless configured to repea
 These keywords generate **layout elements**, not plain text.
 
 ---
+## 📌 Visual Example (Companyheader Section)
+ - Below image shows how the companyheader container appears inside a report \`sabrep_topleft_box\` table in section column value \`detailheader\`:
+ - ![detailheader Section Example](/ai-images/sabreptopleft_section.png)
+
+
+ - Below image shows how the details design appears inside a report in \`sabrep_topleft\` table:
+
+ - ![Companyheader Section Example](/ai-images/sabrep_topleft_companyheader.png)
 
 ## 🔷 Common Attributes  
 (Defined in **sabrep_topleft_Box** → section = companyheader)
@@ -124,7 +132,7 @@ FROM sabcompany a;
 | **line_height** | border height/thickness |
 | **bold** | **1/0** Makes the text appear in bold style when printed in the report. |
 | **align** | text start from the (left/right/centre) this three option. |
-| **visible**|(1/0) values: The visible attribute decides whether this column should be shown to the user in the report output.\n The field still exists in the view and the engine reads the value, but does not display it in the final report.|
+| **visible**|(1/0) values: The visible attribute decides whether this column should be shown to the user in the report output. The field still exists in the view and the engine reads the value, but does not display it in the final report.|
 
 ### Note  
 - If **width = 0**, the value becomes **auto-centered** and **tleft is ignored**.
