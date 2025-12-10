@@ -63,6 +63,17 @@ SELECT 'grid', 'sabrep_reportfooter_chlf_grid1','grid1' tabletag
 - Each row in footer runs its own SQL child view.
 
 ---
+## 📌 Visual Example (reportfooter Section)
+ - Below image shows how the reportfooter container appears inside a report \`sabrep_topleft_box\` table in section column value \`reportfooter\` and also with child container reportfooter_?repcode)_?tabletag):
+ - ![reportfooter Section Example](/ai-images/sabreptopleft_section.png)
+
+
+ 
+ - Below image shows how the reportfooter design appears inside a report in \`sabrep_topleft\` table:
+
+ 
+ - ![reportfooter Section Example](/ai-images/sabrep_topleft_reportfooter.png)
+---
 
 # 🔷 Meaning of tag Column
 | tag  | Meaning |

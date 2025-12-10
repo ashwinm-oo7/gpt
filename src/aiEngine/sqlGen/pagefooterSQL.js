@@ -2,7 +2,7 @@ export function pagefooterExplain() {
   return `
 # 📘 pagefooter View Explanation  
 The **pagefooter** section is printed at the **bottom of the report**, after the Details and reportfooter section is Finished.
-- pagefooter container will be below of the page always and this repeated on every page.
+- pagefooter container will be below of the page always(bottom) and this repeated on every page.
 
 This area is used for:  
 - Footer remarks  
@@ -151,6 +151,19 @@ WHERE TABLE_NAME = 'sabrep_pagefooter_chlf_grid';
 | **head** | display caption in grid |
 
 ---
+---
+## 📌 Visual Example (pagefooter Section)
+ - Below image shows how the pagefooter container appears inside a report \`sabrep_topleft_box\` table in section column value \`pagefooter\` and also with child container pagefooter_?repcode)_?tabletag):
+ - ![pagefooter Section Example](/ai-images/sabreptopleft_section.png)
+
+
+ 
+ - Below image shows how the pagefooter design appears inside a report in \`sabrep_topleft\` table:
+
+ 
+ - ![pagefooter Section Example](/ai-images/sabrep_topleft_pagefooter.png)
+---
+
 # 🔷 sabrep_topleft_box Attributes  
 (For section = pagefooter_<tabletag>)
 

@@ -71,6 +71,17 @@ A PageHeader view is used for top-level fields like:
   ### These keywords generate **layout elements**, not plain text.
 
 ------------------------------------------------------------
+## 📌 Visual Example (Pageheader Section)
+ - Below image shows how the companyheader container appears inside a report \`sabrep_topleft_box\` table in section column value \`pageheader\`:
+ - ![pageheader Section Example](/ai-images/sabreptopleft_section.png)
+
+
+ 
+ - Below image shows how the pageheader design appears inside a report in \`sabrep_topleft\` table:
+
+ 
+ - ![pageheader Section Example](/ai-images/sabrep_topleft_pageheader.png)
+------
 ## 🔷 Common Attributes  
 (Defined in **sabrep_topleft_Box** → section = pageheader)
 below will explain all the column of sabrep_topleft_Box table which is attribute in the software for a container.
