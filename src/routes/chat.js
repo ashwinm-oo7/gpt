@@ -7,17 +7,17 @@ import {
 } from "../controllers/chatController.js";
 
 const router = express.Router();
-import optionalAuthMiddleware from "../middlewares/optionalAuthMiddleware.js";
+import { authMiddleware } from "../middlewares/optionalAuthMiddleware.js";
 import Chat from "../models/Chat.js";
 
-router.post("/savedchat/:chatId", optionalAuthMiddleware, streamChat);
-router.post("/savedchat", optionalAuthMiddleware, streamChat);
-router.get("/chat/history/:chatId", optionalAuthMiddleware, getChatHistory);
+router.post("/savedchat/:chatId", authMiddleware, streamChat);
+router.post("/savedchat", authMiddleware, streamChat);
+router.get("/chat/history/:chatId", authMiddleware, getChatHistory);
 // 📜 Reset (Clear) Chat History for Logged In User
-router.delete("/chat/reset/:chatId", optionalAuthMiddleware, resetChatHistory);
-router.get("/chat/getChatID", optionalAuthMiddleware, getChatById);
+router.delete("/chat/reset/:chatId", authMiddleware, resetChatHistory);
+router.get("/chat/getChatID", authMiddleware, getChatById);
 
-router.post("/new-chat", optionalAuthMiddleware, async (req, res) => {
+router.post("/new-chat", authMiddleware, async (req, res) => {
   try {
     const userId = req.user?.userId || req.body.userID || null;
 

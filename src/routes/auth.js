@@ -5,13 +5,13 @@ import User from "../models/user.js"; // Use .js because it's an ES module
 import Otp from "../models/otp.js"; // Add this at the top
 import { sendMail } from "../utils/mailer.js";
 import { getOtpTemplate } from "../templates/otpTemplate.js";
-
 const router = express.Router();
 import dotenv from "dotenv";
+import { tokenBlacklist } from "../middlewares/optionalAuthMiddleware.js";
 // const otpStore = new Map();
 dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET;
-
+const JWT_EXP = process.env.JWT_EXPIRES_IN;
 router.post("/send-otp", async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ msg: "Email is required" });
@@ -94,26 +94,51 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ msg: "Invalid credentials" });
   }
   const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
-    expiresIn: "24h",
+    expiresIn: JWT_EXP,
   });
   res.json({ token });
 });
+router.post("/logout", (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader.split(" ")[1];
 
+  tokenBlacklist.add(token);
+
+  res.json({ msg: "Logged out successfully" });
+});
 router.get("/me", async (req, res) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ msg: "No token provided" });
+
+  if (!authHeader) {
+    return res.status(401).json({ msg: "No token provided", code: "NO_TOKEN" });
+  }
 
   const token = authHeader.split(" ")[1];
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+
     const user = await User.findById(decoded.userId).select("-password");
-    if (!user) return res.status(404).json({ msg: "User not found" });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ msg: "User not found", code: "USER_NOT_FOUND" });
+    }
 
     res.json({ userId: user._id, email: user.email });
   } catch (error) {
-    console.error(error);
-    res.status(401).json({ msg: "Invalid token" });
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        msg: "Token expired",
+        code: "TOKEN_EXPIRED",
+      });
+    }
+
+    return res.status(401).json({
+      msg: "Invalid token",
+      code: "INVALID_TOKEN",
+    });
   }
 });
-
 export default router;
