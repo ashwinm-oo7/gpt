@@ -13,6 +13,7 @@ const upload = multer({ dest: "uploads/" });
 import dotenv from "dotenv";
 dotenv.config();
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import mongoose from "mongoose";
 
 // The client will automatically use the GEMINI_API_KEY environment variable
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -23,7 +24,11 @@ router.post(
   adminOnly,
   upload.single("file"),
   async (req, res) => {
+    let filePath;
+
     try {
+      filePath = req.file?.path;
+
       if (!req.file) {
         console.error("No file uploaded");
         return res.status(400).json({ message: "No file uploaded" });
@@ -78,12 +83,19 @@ router.post(
       await Mcq.insertMany(formatted, { ordered: true }); // stops at first duplicate or invalid
 
       // Delete the uploaded file
-      fs.unlinkSync(req.file.path);
+      // fs.unlinkSync(req.file.path);
 
       res.json({ message: "MCQs uploaded successfully" });
     } catch (err) {
       console.error("Bulk upload error:", err.message);
-      res.status(500).json({ message: err.message });
+      res.status(500).json({
+        success: false,
+        message: err.message || "Bulk upload failed",
+      });
+    } finally {
+      if (filePath && fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
     }
   },
 );
@@ -135,7 +147,7 @@ explanation:""
   }
 });
 
-router.get("/domains", authMiddleware, adminOnly, async (req, res) => {
+router.get("/domains", authMiddleware, async (req, res) => {
   try {
     const domains = await Mcq.distinct("domain");
     res.json(domains);
@@ -153,7 +165,7 @@ router.get("/", authMiddleware, adminOnly, async (req, res) => {
     const filter = {};
     if (domain) filter.domain = domain;
     if (level) filter.level = Number(level);
-
+    console.log("/getall", level);
     const mcqs = await Mcq.find(filter).sort({ level: 1, step: 1 });
     console.log(mcqs);
     res.json(mcqs);
@@ -248,6 +260,10 @@ router.put("/reorder", authMiddleware, adminOnly, async (req, res) => {
 // PUT update MCQ
 // ----------------------
 router.put("/:id", authMiddleware, adminOnly, async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: "Invalid ID" });
+  }
+
   try {
     const {
       domain,
@@ -311,16 +327,23 @@ router.put("/:id", authMiddleware, adminOnly, async (req, res) => {
 // ----------------------
 router.delete("/:id", authMiddleware, adminOnly, async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
     const mcq = await Mcq.findById(req.params.id);
-    if (!mcq) return res.status(404).json({ message: "MCQ not found" });
 
-    await mcq.remove();
+    if (!mcq) {
+      return res.status(404).json({ message: "MCQ not found" });
+    }
+
+    await Mcq.findByIdAndDelete(req.params.id);
+
     res.json({ message: "MCQ deleted successfully" });
   } catch (err) {
+    console.error("Delete MCQ error:", err);
     res.status(500).json({ message: err.message });
   }
 });
-
 // ----------------------
 // PUT reorder levels within a domain
 // ----------------------

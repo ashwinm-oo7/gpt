@@ -3,7 +3,10 @@ import express from "express";
 const router = express.Router();
 import Exam from "../models/Exam.js";
 import Mcq from "../models/mcq.js";
-import { authMiddleware } from "../middlewares/optionalAuthMiddleware.js";
+import {
+  adminOnly,
+  authMiddleware,
+} from "../middlewares/optionalAuthMiddleware.js";
 
 // START EXAM
 router.post("/start", authMiddleware, async (req, res) => {
@@ -19,7 +22,7 @@ router.post("/start", authMiddleware, async (req, res) => {
       submitted: false,
     });
     if (existing) return res.json({ examId: existing._id });
-
+    console.log("userids", userId);
     // Create new exam attempt
     const exam = new Exam({ user: userId, domain, level });
     await exam.save();
@@ -147,6 +150,30 @@ router.post("/autosave/:examId", authMiddleware, async (req, res) => {
   } catch (err) {
     console.error("Autosave failed", err);
     res.status(500).json({ message: "Failed to autosave exam" });
+  }
+});
+router.get("/attempt/:examId", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { examId } = req.params;
+
+    const exam = await Exam.findById(examId).populate("user", "name email");
+
+    if (!exam) {
+      return res.status(404).json({ message: "Exam not found" });
+    }
+
+    const questions = await Mcq.find({
+      domain: exam.domain,
+      level: exam.level,
+    }).sort("step");
+
+    res.json({
+      exam,
+      questions,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load attempt" });
   }
 });
 export default router;

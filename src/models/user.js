@@ -40,6 +40,20 @@ const userSchema = new mongoose.Schema({
     enum: ["user", "admin"],
     default: "user",
   },
+  refreshToken: {
+    type: String,
+  },
+  loginDevices: [
+    {
+      ip: String,
+      browser: String,
+      os: String,
+      device: String,
+      location: String,
+      lastLogin: Date,
+      firstLogin: Date,
+    },
+  ],
 });
 
 // Export the model using ES module syntax

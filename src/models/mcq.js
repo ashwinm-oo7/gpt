@@ -4,7 +4,7 @@ const mcqSchema = new mongoose.Schema(
   {
     domain: { type: String, required: true, trim: true },
     level: { type: Number, required: true, min: 1, max: 30 },
-    step: { type: Number, required: true, min: 1, max: 25 },
+    step: { type: Number, required: true, min: 1, max: 100 },
     timeLimit: { type: Number, default: 2 },
     question: { type: String, required: true, trim: true },
     options: {

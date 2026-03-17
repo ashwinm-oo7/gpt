@@ -5,13 +5,32 @@ import User from "../models/user.js"; // Use .js because it's an ES module
 import Otp from "../models/otp.js"; // Add this at the top
 import { sendMail } from "../utils/mailer.js";
 import { getOtpTemplate } from "../templates/otpTemplate.js";
-const router = express.Router();
 import dotenv from "dotenv";
-import { tokenBlacklist } from "../middlewares/optionalAuthMiddleware.js";
-// const otpStore = new Map();
+import { UAParser } from "ua-parser-js";
+// import { tokenBlacklist } from "../middlewares/optionalAuthMiddleware.js";
+// import cookieParser from "cookie-parser";
+import {
+  authMiddleware,
+  adminOnly,
+} from "../middlewares/optionalAuthMiddleware.js";
+import rateLimit from "express-rate-limit";
+
+const router = express.Router();
 dotenv.config();
+const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+const ACCESS_TOKEN_MAX_AGE = process.env.ACCESS_TOKEN_MAX_AGE;
+const REFRESH_TOKEN_MAX_AGE = process.env.REFRESH_TOKEN_MAX_AGE;
+// const otpStore = new Map();
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXP = process.env.JWT_EXPIRES_IN;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
+const JWT_REFRESH_EXP = process.env.JWT_REFRESH_EXP || "7d";
+const loginLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 10,
+  message: "Too many login attempts. Try again later.",
+});
+
 router.post("/send-otp", async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ msg: "Email is required" });
@@ -79,55 +98,196 @@ router.post("/verify-otp", async (req, res) => {
     await Otp.deleteMany({ email });
   }
 });
+router.get("/login-history", authMiddleware, async (req, res) => {
+  const user = await User.findById(req.userId).select("loginDevices");
 
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
-  if (!user) {
-    console.log("User not found");
-    return res.status(400).json({ msg: "Invalid credentials" });
-  }
-
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    console.log("Password does not match");
-    return res.status(400).json({ msg: "Invalid credentials" });
-  }
-  const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
-    expiresIn: JWT_EXP,
-  });
-  res.json({ token });
+  res.json(user.loginDevices);
 });
-router.post("/logout", (req, res) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader.split(" ")[1];
+router.post("/login", loginLimiter, async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      console.log("User not found");
+      return res.status(400).json({ msg: "Invalid credentials" });
+    }
 
-  tokenBlacklist.add(token);
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      console.log("Password does not match");
+      return res.status(401).json({ msg: "Invalid credentials" });
+    }
+    const ip =
+      req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
+
+    const parser = new UAParser(req.headers["user-agent"]);
+    const deviceInfo = parser.getResult();
+
+    const browser = deviceInfo.browser.name;
+    const os = deviceInfo.os.name;
+    const device = deviceInfo.device.type || "desktop";
+    let location = "Unknown";
+
+    try {
+      const response = await fetch(`https://ipapi.co/${ip}/json/`);
+      const geo = await response.json();
+      location = geo.country_name || "Unknown";
+    } catch (err) {
+      console.log("Geo lookup failed");
+    }
+    const deviceExists = user.loginDevices.find(
+      (d) =>
+        d.ip === ip &&
+        d.browser === browser &&
+        d.os === os &&
+        d.device === device,
+    );
+    if (!deviceExists) {
+      if (user.loginDevices.length > 5) {
+        user.loginDevices.shift();
+      }
+      user.loginDevices.push({
+        ip,
+        browser,
+        os,
+        device,
+        location,
+        firstLogin: new Date(),
+        lastLogin: new Date(),
+      });
+
+      await sendMail({
+        to: user.email,
+        subject: "New Device Login Detected",
+        html: `
+  <h2>Security Alert</h2>
+  <p>A new device logged into your account.</p>
+
+  <b>Device:</b> ${browser} on ${os}<br/>
+  <b>Type:</b> ${device}<br/>
+  <b>IP:</b> ${ip}<br/>
+  <b>Time:</b> ${new Date().toLocaleString()}<br/>
+
+  If this wasn't you, change your password immediately.
+  `,
+      });
+      console.log("New device login:", ip, browser, os);
+    } else {
+      deviceExists.lastLogin = new Date();
+    }
+
+    const accessToken = jwt.sign(
+      { userId: user._id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXP },
+    );
+
+    const refreshToken = jwt.sign({ userId: user._id }, REFRESH_SECRET, {
+      expiresIn: JWT_REFRESH_EXP,
+    });
+    user.refreshToken = refreshToken;
+    await user.save();
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: Number(ACCESS_TOKEN_MAX_AGE),
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: Number(REFRESH_TOKEN_MAX_AGE),
+    });
+    res.json({
+      msg: "Login successful",
+      role: user.role,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      msg: "Login failed",
+    });
+  }
+});
+router.post("/refresh", async (req, res) => {
+  const token = req.cookies.refreshToken;
+
+  console.log("/refresh", token);
+  if (!token) {
+    return res.status(403).json({ msg: "No refresh token" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, REFRESH_SECRET);
+
+    const user = await User.findById(decoded.userId);
+
+    if (!user || user.refreshToken !== token) {
+      return res.status(403).json({ msg: "Invalid refresh token" });
+    }
+    console.log("User fetch from db", user);
+    const newAccessToken = jwt.sign(
+      { userId: user._id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN },
+    );
+
+    res.cookie("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: Number(ACCESS_TOKEN_MAX_AGE),
+    });
+
+    res.json({ msg: "Token refreshed" });
+  } catch (err) {
+    return res.status(403).json({ msg: "Invalid refresh token" });
+  }
+});
+// router.post("/logout", (req, res) => {
+//   const authHeader = req.headers.authorization;
+//   const token = authHeader.split(" ")[1];
+//   tokenBlacklist.add(token);
+//   res.json({ msg: "Logged out successfully" });
+// });
+router.post("/logout", async (req, res) => {
+  const token = req.cookies.refreshToken;
+
+  if (token) {
+    const decoded = jwt.decode(token);
+    const user = await User.findById(decoded.userId);
+
+    if (user) {
+      user.refreshToken = null;
+      await user.save();
+    }
+  }
+
+  res.clearCookie("accessToken");
+  res.clearCookie("refreshToken");
 
   res.json({ msg: "Logged out successfully" });
 });
-router.get("/me", async (req, res) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    return res.status(401).json({ msg: "No token provided", code: "NO_TOKEN" });
-  }
-
-  const token = authHeader.split(" ")[1];
-
+router.get("/me", authMiddleware, async (req, res) => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    const user = await User.findById(decoded.userId).select("-password");
-
+    const user = await User.findById(req.userId).select("-password");
+    // console.log("USERID", req.userId);
     if (!user) {
-      return res
-        .status(404)
-        .json({ msg: "User not found", code: "USER_NOT_FOUND" });
+      return res.status(404).json({
+        msg: "User not found",
+      });
     }
 
-    res.json({ userId: user._id, email: user.email });
+    res.json({
+      userId: user._id,
+      email: user.email,
+      role: user.role,
+    });
   } catch (error) {
+    console.error(error);
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({
         msg: "Token expired",
@@ -135,10 +295,15 @@ router.get("/me", async (req, res) => {
       });
     }
 
-    return res.status(401).json({
-      msg: "Invalid token",
-      code: "INVALID_TOKEN",
+    res.status(500).json({
+      msg: "Failed to fetch user",
     });
   }
+});
+
+router.get("/admin/data", authMiddleware, adminOnly, (req, res) => {
+  res.json({
+    msg: "Admin data access granted",
+  });
 });
 export default router;

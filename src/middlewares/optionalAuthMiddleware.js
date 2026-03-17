@@ -6,31 +6,40 @@ dotenv.config();
 
 export const tokenBlacklist = new Set(); // optional
 // Verify JWT and attach user to req
+
 export const authMiddleware = async (req, res, next) => {
+  const token = req.cookies.accessToken;
+  console.log("Cookies received:", req.cookies);
+
+  if (!token) {
+    return res.status(401).json({ msg: "Not authorized" });
+  }
+
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ message: "No token" });
-
-    const token = authHeader.split(" ")[1];
-
-    if (tokenBlacklist.has(token)) {
-      return res.status(401).json({ message: "Token revoked" });
-    }
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.userId);
-    if (!user) return res.status(401).json({ message: "User not found" });
+    const user = await User.findById(decoded.userId).select("-password");
+    console.log("Decoded JWT:", decoded);
+    if (!user) {
+      return res.status(401).json({ msg: "User not found" });
+    }
 
-    req.user = user; // full user object
+    req.user = user; // now req.user._id and req.user.role work everywhere
     req.userId = user._id; // for convenience
     req.token = token; // store token if needed
+
     next();
-  } catch (err) {
-    res.status(401).json({ message: "Invalid or expired token" });
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        msg: "Token expired",
+        code: "TOKEN_EXPIRED",
+      });
+    }
+
+    return res.status(401).json({ msg: "Invalid token" });
   }
 };
-
 // Only admin users
 export const adminOnly = async (req, res, next) => {
   // Ensure verifyToken runs first

@@ -15,7 +15,7 @@ export const getProfile = async (req, res) => {
     }
 
     const user = await User.findById(req.userId).select("-password");
-
+    console.log("USERS", user);
     if (!user) return res.status(404).json({ msg: "User not found" });
 
     res.json(user);
@@ -87,23 +87,27 @@ export const sendPasswordOtp = async (req, res) => {
 
     const otp = otpGenerator.generate(6, {
       digits: true, // ✅ include digits
-      alphabets: false, // ❌ no letters
-      upperCase: false, // ❌ no uppercase
-      specialChars: false, // ❌ no special characters
+      lowerCaseAlphabets: false,
+      upperCaseAlphabets: false,
+      specialChars: false,
     });
-
+    console.log("sendPasswordOtp", otp);
     user.otp = otp;
     user.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
     await user.save();
 
     try {
       if (!user.email) throw new Error("User email not defined");
+
       await sendMail({
         to: user.email,
         subject: "Password Change OTP",
         html: `Your OTP is <b>${otp}</b>. It will expire in 5 minutes.`,
       });
-      res.json({ msg: "OTP sent to email" });
+      res.json({
+        msg: "OTP sent to email",
+        otpExpiry: user.otpExpiry,
+      });
     } catch (mailErr) {
       console.error("Email sending failed:", mailErr.message);
 
