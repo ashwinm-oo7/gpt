@@ -100,6 +100,14 @@ router.post("/submit/:examId", authMiddleware, async (req, res) => {
     if (!updatedExam) {
       return res.json({ message: "Exam already submitted" });
     }
+    // Emit notification to all connected admins
+    io.emit("newExamAttempt", {
+      message: `${exam.user?.name || "A user"} submitted an exam in ${
+        exam.domain
+      } Level ${exam.level}`,
+      examId: exam._id,
+      createdAt: new Date(),
+    });
 
     res.json({
       message: "Exam submitted",
@@ -176,4 +184,5 @@ router.get("/attempt/:examId", authMiddleware, adminOnly, async (req, res) => {
     res.status(500).json({ message: "Failed to load attempt" });
   }
 });
+
 export default router;

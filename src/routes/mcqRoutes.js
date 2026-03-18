@@ -159,7 +159,7 @@ router.get("/domains", authMiddleware, async (req, res) => {
 // ----------------------
 // GET MCQs filtered by domain & level
 // ----------------------
-router.get("/", authMiddleware, adminOnly, async (req, res) => {
+router.get("/", authMiddleware, async (req, res) => {
   try {
     const { domain, level } = req.query;
     const filter = {};

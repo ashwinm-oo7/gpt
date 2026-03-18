@@ -15,6 +15,11 @@ import profileRoutes from "./src/routes/profileRoutes.js";
 import mcqRoutes from "./src/routes/mcqRoutes.js";
 import examRoutes from "./src/routes/exam.js";
 import adminExamRoutes from "./src/routes/adminExam.js";
+import http from "http";
+import { Server } from "socket.io";
+
+const app = express();
+const server = http.createServer(app);
 
 dotenv.config();
 import csrf from "csurf";
@@ -34,6 +39,14 @@ requiredEnvVars.forEach((varName) => {
     throw new Error(`Environment variable ${varName} is missing`);
   }
 });
+// Socket.IO setup
+export const io = new Server(server, {
+  cors: {
+    origin: ["http://localhost:3000", process.env.DeployLink].filter(Boolean),
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
 
 // MongoDB URI construction
 const username = process.env.MONGO_USERNAME;
@@ -49,7 +62,6 @@ mongoose
   .then(() => console.log("MongoDB connected successfully"))
   .catch((err) => console.error("MongoDB connection failed:", err));
 
-const app = express();
 app.set("trust proxy", 1);
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
@@ -98,8 +110,20 @@ app.use("/api/exam", csrfProtection, examRoutes);
 app.use("/api/admin/exams", csrfProtection, adminExamRoutes);
 
 // Start the server
+// Socket.IO connection logging
+io.on("connection", (socket) => {
+  console.log("✅ Client connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("❌ Client disconnected:", socket.id);
+  });
+});
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+// app.listen(PORT, () => {
+//   console.log(`Server running on port ${PORT}`);
+// });
+
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

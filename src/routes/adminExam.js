@@ -71,5 +71,40 @@ router.get("/attempt/:examId", authMiddleware, adminOnly, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+router.get(
+  "/analytics/summary",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const totalAttempts = await Exam.countDocuments({ submitted: true });
 
+      const avgScoreAgg = await Exam.aggregate([
+        { $match: { submitted: true } },
+        { $group: { _id: null, avgScore: { $avg: "$score" } } },
+      ]);
+
+      const avgScore = avgScoreAgg[0]?.avgScore || 0;
+
+      const domainStats = await Exam.aggregate([
+        { $match: { submitted: true } },
+        {
+          $group: {
+            _id: "$domain",
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+
+      res.json({
+        totalAttempts,
+        avgScore: Math.round(avgScore),
+        domainStats,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to load analytics" });
+    }
+  },
+);
 export default router;
