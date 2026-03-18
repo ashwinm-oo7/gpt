@@ -24,7 +24,7 @@ const server = http.createServer(app);
 dotenv.config();
 import csrf from "csurf";
 
-const csrfProtection = csrf({ cookie: true });
+// const csrfProtection = csrf({ cookie: true });
 
 const requiredEnvVars = [
   "MONGO_USERNAME",
@@ -94,26 +94,32 @@ if (process.env.DeployLink) {
 //   }),
 // );
 
+app.use((req, res, next) => {
+  console.log("Origin:", req.headers.origin);
+  next();
+});
 app.use(
   cors({
     origin: process.env.DeployLink,
     credentials: true,
   }),
 );
-app.get("/api/csrf-token", csrfProtection, (req, res) => {
-  res.json({ csrfToken: req.csrfToken() });
-});
+
+// app.get("/api/csrf-token", csrfProtection, (req, res) => {
+//   res.json({ csrfToken: req.csrfToken() });
+// });
+
 // Use the chat routes
 app.use("/chats", chatRoutes);
 app.use("/api/auth", LoginRoutes);
 app.use("/search-engine", searchEngineRoutes);
 app.use("/ai-generator", generatorRoutes);
 app.use("/ai", aiRouter);
-app.use("/api/user", csrfProtection, userRoutes);
-app.use("/api/profile", csrfProtection, profileRoutes);
-app.use("/api/mcq", csrfProtection, mcqRoutes);
-app.use("/api/exam", csrfProtection, examRoutes);
-app.use("/api/admin/exams", csrfProtection, adminExamRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/mcq", mcqRoutes);
+app.use("/api/exam", examRoutes);
+app.use("/api/admin/exams", adminExamRoutes);
 
 // Start the server
 // Socket.IO connection logging
@@ -130,7 +136,7 @@ const PORT = process.env.PORT || 5000;
 //   console.log(`Server running on port ${PORT}`);
 // });
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// server.listen(PORT, () => {
+//   console.log(`Server running on port ${PORT}`);
+// });
 export default app;
