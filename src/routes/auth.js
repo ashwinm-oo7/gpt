@@ -25,6 +25,8 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXP = process.env.JWT_EXPIRES_IN;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
 const JWT_REFRESH_EXP = process.env.JWT_REFRESH_EXP || "7d";
+const isProduction = process.env.NODE_ENV === "production";
+
 const loginLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 10,
@@ -190,14 +192,14 @@ router.post("/login", loginLimiter, async (req, res) => {
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
+      sameSite: isProduction ? "None" : "Lax",
       maxAge: Number(ACCESS_TOKEN_MAX_AGE),
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
+      sameSite: isProduction ? "None" : "Lax",
       maxAge: Number(REFRESH_TOKEN_MAX_AGE),
     });
     res.json({
@@ -238,7 +240,7 @@ router.post("/refresh", async (req, res) => {
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
+      sameSite: isProduction ? "None" : "Lax",
       maxAge: Number(ACCESS_TOKEN_MAX_AGE),
     });
 
