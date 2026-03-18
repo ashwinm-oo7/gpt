@@ -71,36 +71,28 @@ app.use(
     crossOriginResourcePolicy: false,
   }),
 );
-const allowedOrigins = ["http://localhost:3000"];
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://mauryagpt.vercel.app",
+];
 
 if (process.env.DeployLink) {
   allowedOrigins.push(process.env.DeployLink);
 }
 
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       if (!origin || allowedOrigins.includes(origin)) {
-//         callback(null, true);
-//       } else {
-//         callback(
-//           new Error(`CORS policy does not allow access from origin ${origin}`),
-//         );
-//       }
-//     },
-//     methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
-//     allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
-//     credentials: true,
-//   }),
-// );
-
-app.use((req, res, next) => {
-  console.log("Origin:", req.headers.origin);
-  next();
-});
 app.use(
   cors({
-    origin: process.env.DeployLink,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(
+          new Error(`CORS policy does not allow access from origin ${origin}`),
+        );
+      }
+    },
+    methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
     credentials: true,
   }),
 );
@@ -110,6 +102,7 @@ app.use(
 // });
 
 // Use the chat routes
+
 app.use("/chats", chatRoutes);
 app.use("/api/auth", LoginRoutes);
 app.use("/search-engine", searchEngineRoutes);

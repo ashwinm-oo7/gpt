@@ -195,8 +195,8 @@ router.post("/login", loginLimiter, async (req, res) => {
       // sameSite: isProduction ? "None" : "Lax",
       secure: true,
       sameSite: "None",
-
       maxAge: Number(ACCESS_TOKEN_MAX_AGE),
+      path: "/",
     });
 
     res.cookie("refreshToken", refreshToken, {
@@ -207,6 +207,7 @@ router.post("/login", loginLimiter, async (req, res) => {
       // secure: process.env.NODE_ENV === "production",
       // sameSite: isProduction ? "None" : "Lax",
       maxAge: Number(REFRESH_TOKEN_MAX_AGE),
+      path: "/",
     });
     res.json({
       msg: "Login successful",
@@ -251,6 +252,7 @@ router.post("/refresh", async (req, res) => {
       // secure: process.env.NODE_ENV === "production",
       // sameSite: isProduction ? "None" : "Lax",
       maxAge: Number(ACCESS_TOKEN_MAX_AGE),
+      path: "/",
     });
 
     res.json({ msg: "Token refreshed" });
@@ -283,6 +285,7 @@ router.post("/logout", async (req, res) => {
   res.json({ msg: "Logged out successfully" });
 });
 router.get("/me", authMiddleware, async (req, res) => {
+  console.log("Cookies:", req.cookies);
   try {
     const user = await User.findById(req.userId).select("-password");
     // console.log("USERID", req.userId);
