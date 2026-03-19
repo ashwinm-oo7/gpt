@@ -193,7 +193,7 @@ router.post("/login", loginLimiter, async (req, res) => {
       httpOnly: true,
       // secure: process.env.NODE_ENV === "production",
       // sameSite: isProduction ? "None" : "Lax",
-      secure: true,
+      secure: isProduction,
       sameSite: "None",
       maxAge: Number(ACCESS_TOKEN_MAX_AGE),
       path: "/",
