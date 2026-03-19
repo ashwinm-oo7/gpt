@@ -194,7 +194,7 @@ router.post("/login", loginLimiter, async (req, res) => {
       // secure: process.env.NODE_ENV === "production",
       // sameSite: isProduction ? "None" : "Lax",
       secure: isProduction,
-      sameSite: "None",
+      sameSite: "Lax",
       maxAge: Number(ACCESS_TOKEN_MAX_AGE),
       path: "/",
     });
@@ -202,7 +202,7 @@ router.post("/login", loginLimiter, async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: "None",
+      sameSite: "Lax",
 
       // secure: process.env.NODE_ENV === "production",
       // sameSite: isProduction ? "None" : "Lax",
@@ -247,7 +247,7 @@ router.post("/refresh", async (req, res) => {
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
       secure: true,
-      sameSite: "None",
+      sameSite: "Lax",
 
       // secure: process.env.NODE_ENV === "production",
       // sameSite: isProduction ? "None" : "Lax",
