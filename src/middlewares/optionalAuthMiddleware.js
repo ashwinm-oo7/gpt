@@ -8,7 +8,14 @@ export const tokenBlacklist = new Set(); // optional
 // Verify JWT and attach user to req
 
 export const authMiddleware = async (req, res, next) => {
-  const token = req.cookies.accessToken;
+  // const token = req.cookies.accessToken;
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ msg: "Not authorized" });
+  }
+
+  const token = authHeader.split(" ")[1];
   console.log("Cookies received:", req.cookies);
 
   if (!token) {

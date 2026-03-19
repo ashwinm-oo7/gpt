@@ -43,7 +43,7 @@ const userSchema = new mongoose.Schema({
   refreshToken: {
     type: String,
   },
-  loginDevices: [
+  loginSessions: [
     {
       ip: String,
       browser: String,
@@ -52,6 +52,7 @@ const userSchema = new mongoose.Schema({
       location: String,
       lastLogin: Date,
       firstLogin: Date,
+      token: String,
     },
   ],
 });

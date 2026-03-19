@@ -7,7 +7,7 @@ import { sendMail } from "../utils/mailer.js";
 import { getOtpTemplate } from "../templates/otpTemplate.js";
 import dotenv from "dotenv";
 import { UAParser } from "ua-parser-js";
-// import { tokenBlacklist } from "../middlewares/optionalAuthMiddleware.js";
+import { tokenBlacklist } from "../middlewares/optionalAuthMiddleware.js";
 // import cookieParser from "cookie-parser";
 import {
   authMiddleware,
@@ -100,10 +100,10 @@ router.post("/verify-otp", async (req, res) => {
     await Otp.deleteMany({ email });
   }
 });
-router.get("/login-history", authMiddleware, async (req, res) => {
-  const user = await User.findById(req.userId).select("loginDevices");
+router.get("/sessions", authMiddleware, async (req, res) => {
+  const user = await User.findById(req.userId).select("loginSessions");
 
-  res.json(user.loginDevices);
+  res.json(user.loginSessions);
 });
 router.post("/login", loginLimiter, async (req, res) => {
   const { email, password } = req.body;
@@ -125,8 +125,8 @@ router.post("/login", loginLimiter, async (req, res) => {
     const parser = new UAParser(req.headers["user-agent"]);
     const deviceInfo = parser.getResult();
 
-    const browser = deviceInfo.browser.name;
-    const os = deviceInfo.os.name;
+    const browser = deviceInfo.browser.name || "Unknown";
+    const os = deviceInfo.os.name || "Unknown";
     const device = deviceInfo.device.type || "desktop";
     let location = "Unknown";
 
@@ -137,46 +137,9 @@ router.post("/login", loginLimiter, async (req, res) => {
     } catch (err) {
       console.log("Geo lookup failed");
     }
-    const deviceExists = user.loginDevices.find(
-      (d) =>
-        d.ip === ip &&
-        d.browser === browser &&
-        d.os === os &&
-        d.device === device,
-    );
-    if (!deviceExists) {
-      if (user.loginDevices.length > 5) {
-        user.loginDevices.shift();
-      }
-      user.loginDevices.push({
-        ip,
-        browser,
-        os,
-        device,
-        location,
-        firstLogin: new Date(),
-        lastLogin: new Date(),
-      });
-
-      await sendMail({
-        to: user.email,
-        subject: "New Device Login Detected",
-        html: `
-  <h2>Security Alert</h2>
-  <p>A new device logged into your account.</p>
-
-  <b>Device:</b> ${browser} on ${os}<br/>
-  <b>Type:</b> ${device}<br/>
-  <b>IP:</b> ${ip}<br/>
-  <b>Time:</b> ${new Date().toLocaleString()}<br/>
-
-  If this wasn't you, change your password immediately.
-  `,
-      });
-      console.log("New device login:", ip, browser, os);
-    } else {
-      deviceExists.lastLogin = new Date();
-    }
+    // -------------------------
+    // GENERATE TOKENS
+    // -------------------------
 
     const accessToken = jwt.sign(
       { userId: user._id, role: user.role },
@@ -187,30 +150,88 @@ router.post("/login", loginLimiter, async (req, res) => {
     const refreshToken = jwt.sign({ userId: user._id }, REFRESH_SECRET, {
       expiresIn: JWT_REFRESH_EXP,
     });
-    user.refreshToken = refreshToken;
+    // -------------------------
+    // INIT SESSION ARRAY
+    // -------------------------
+    if (!user.loginSessions) user.loginSessions = [];
+
+    // -------------------------
+    // CHECK EXISTING SESSION
+    // -------------------------
+    const existingSession = user.loginSessions.find(
+      (s) =>
+        s.ip === ip &&
+        s.browser === browser &&
+        s.os === os &&
+        s.device === device,
+    );
+
+    if (!existingSession) {
+      // LIMIT SESSIONS (max 5)
+      if (user.loginSessions.length >= 5) {
+        user.loginSessions.shift();
+      }
+
+      // ADD NEW SESSION
+      user.loginSessions.push({
+        token: refreshToken,
+        ip,
+        browser,
+        os,
+        device,
+        location,
+        firstLogin: new Date(),
+        lastLogin: new Date(),
+      });
+
+      // OPTIONAL EMAIL ALERT
+      await sendMail({
+        to: user.email,
+        subject: "New Device Login Detected",
+        html: `
+          <h2>Security Alert</h2>
+          <p>A new device logged into your account.</p>
+
+          <b>Device:</b> ${browser} on ${os}<br/>
+          <b>Type:</b> ${device}<br/>
+          <b>IP:</b> ${ip}<br/>
+          <b>Time:</b> ${new Date().toLocaleString()}<br/>
+
+          If this wasn't you, change your password immediately.
+        `,
+      });
+
+      console.log("New device login:", ip, browser, os);
+    } else {
+      // UPDATE LAST LOGIN
+      existingSession.lastLogin = new Date();
+    }
+
+    // -------------------------
+    // SAVE USER
+    // -------------------------
+
     await user.save();
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      // secure: process.env.NODE_ENV === "production",
-      // sameSite: isProduction ? "None" : "Lax",
-      secure: isProduction,
-      sameSite: "Lax",
-      maxAge: Number(ACCESS_TOKEN_MAX_AGE),
-      path: "/",
-    });
+    // res.cookie("accessToken", accessToken, {
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV === "production",
+    //   sameSite: isProduction ? "None" : "Lax",
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "Lax",
+    //   maxAge: Number(ACCESS_TOKEN_MAX_AGE),
+    //   path: "/",
+    // });
 
-      // secure: process.env.NODE_ENV === "production",
-      // sameSite: isProduction ? "None" : "Lax",
-      maxAge: Number(REFRESH_TOKEN_MAX_AGE),
-      path: "/",
-    });
+    // res.cookie("refreshToken", refreshToken, {
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV === "production",
+    //   sameSite: isProduction ? "None" : "Lax",
+    //   maxAge: Number(REFRESH_TOKEN_MAX_AGE),
+    //   path: "/",
+    // });
     res.json({
       msg: "Login successful",
+      accessToken,
+      refreshToken,
       role: user.role,
     });
   } catch (error) {
@@ -222,7 +243,7 @@ router.post("/login", loginLimiter, async (req, res) => {
   }
 });
 router.post("/refresh", async (req, res) => {
-  const token = req.cookies.refreshToken;
+  const { token } = req.body;
 
   console.log("/refresh", token);
   if (!token) {
@@ -233,8 +254,14 @@ router.post("/refresh", async (req, res) => {
     const decoded = jwt.verify(token, REFRESH_SECRET);
 
     const user = await User.findById(decoded.userId);
+    console.log("user.loginSessions", user, user.loginSessions);
+    if (!user || !user.loginSessions) {
+      return res.status(403).json({ msg: "Invalid refresh token" });
+    }
 
-    if (!user || user.refreshToken !== token) {
+    const sessionExists = user.loginSessions.find((s) => s.token === token);
+
+    if (!sessionExists) {
       return res.status(403).json({ msg: "Invalid refresh token" });
     }
     console.log("User fetch from db", user);
@@ -244,46 +271,64 @@ router.post("/refresh", async (req, res) => {
       { expiresIn: JWT_EXPIRES_IN },
     );
 
-    res.cookie("accessToken", newAccessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "Lax",
+    // res.cookie("accessToken", newAccessToken, {
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV === "production",
+    //   sameSite: isProduction ? "None" : "Lax",
+    //   maxAge: Number(ACCESS_TOKEN_MAX_AGE),
+    //   path: "/",
+    // });
 
-      // secure: process.env.NODE_ENV === "production",
-      // sameSite: isProduction ? "None" : "Lax",
-      maxAge: Number(ACCESS_TOKEN_MAX_AGE),
-      path: "/",
-    });
-
-    res.json({ msg: "Token refreshed" });
+    res.json({ accessToken: newAccessToken, msg: "Token refreshed" });
   } catch (err) {
     return res.status(403).json({ msg: "Invalid refresh token" });
   }
 });
-// router.post("/logout", (req, res) => {
-//   const authHeader = req.headers.authorization;
-//   const token = authHeader.split(" ")[1];
-//   tokenBlacklist.add(token);
-//   res.json({ msg: "Logged out successfully" });
-// });
-router.post("/logout", async (req, res) => {
-  const token = req.cookies.refreshToken;
+router.post("/logout", authMiddleware, async (req, res) => {
+  const refreshToken = req.body.refreshToken;
 
-  if (token) {
-    const decoded = jwt.decode(token);
-    const user = await User.findById(decoded.userId);
+  const user = await User.findById(req.userId);
 
-    if (user) {
-      user.refreshToken = null;
-      await user.save();
-    }
+  if (user && user.loginSessions) {
+    user.loginSessions = user.loginSessions.filter(
+      (s) => s.token !== refreshToken,
+    );
+
+    await user.save();
   }
 
-  res.clearCookie("accessToken");
-  res.clearCookie("refreshToken");
-
-  res.json({ msg: "Logged out successfully" });
+  res.json({ msg: "Logged out from this device" });
 });
+
+router.post("/logout-all", authMiddleware, async (req, res) => {
+  const user = await User.findById(req.userId);
+
+  if (user) {
+    user.loginSessions = []; // 🔥 clear all sessions
+    await user.save();
+  }
+
+  res.json({ msg: "Logged out from all devices" });
+});
+// router.post("/logout", async (req, res) => {
+//   const token = req.cookies.refreshToken;
+
+//   if (token) {
+//     const decoded = jwt.decode(token);
+//     const user = await User.findById(decoded.userId);
+
+//     if (user) {
+//       user.refreshToken = null;
+//       await user.save();
+//     }
+//   }
+
+//   res.clearCookie("accessToken");
+//   res.clearCookie("refreshToken");
+
+//   res.json({ msg: "Logged out successfully" });
+// });
+
 router.get("/me", authMiddleware, async (req, res) => {
   console.log("Cookies:", req.cookies);
   try {
@@ -315,9 +360,4 @@ router.get("/me", authMiddleware, async (req, res) => {
   }
 });
 
-router.get("/admin/data", authMiddleware, adminOnly, (req, res) => {
-  res.json({
-    msg: "Admin data access granted",
-  });
-});
 export default router;

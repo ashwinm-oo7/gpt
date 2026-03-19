@@ -16,10 +16,6 @@ import mcqRoutes from "./src/routes/mcqRoutes.js";
 import examRoutes from "./src/routes/exam.js";
 import adminExamRoutes from "./src/routes/adminExam.js";
 import http from "http";
-import path from "path";
-import { fileURLToPath } from "url";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 import { Server } from "socket.io";
 
 const app = express();
@@ -75,41 +71,33 @@ app.use(
     crossOriginResourcePolicy: false,
   }),
 );
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://mauryagpt.vercel.app",
-];
+const allowedOrigins = ["http://localhost:3000"];
 
 if (process.env.DeployLink) {
   allowedOrigins.push(process.env.DeployLink);
 }
 
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       if (!origin || allowedOrigins.includes(origin)) {
-//         callback(null, true);
-//       } else {
-//         callback(
-//           new Error(`CORS policy does not allow access from origin ${origin}`),
-//         );
-//       }
-//     },
-//     methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
-//     allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
-//     credentials: true,
-//   }),
-// );
-
-// app.get("/api/csrf-token", csrfProtection, (req, res) => {
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(
+          new Error(`CORS policy does not allow access from origin ${origin}`),
+        );
+      }
+    },
+    methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
+    credentials: true,
+  }),
+);
+// app.get("/api/csrf-token",csrfProtection, (req, res) => {
 //   res.json({ csrfToken: req.csrfToken() });
 // });
-
 // Use the chat routes
-
-app.use(cors());
-app.use(express.static(path.join(__dirname, "client/build")));
-
 app.use("/chats", chatRoutes);
 app.use("/api/auth", LoginRoutes);
 app.use("/search-engine", searchEngineRoutes);
@@ -130,9 +118,7 @@ io.on("connection", (socket) => {
     console.log("❌ Client disconnected:", socket.id);
   });
 });
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "client/build/index.html"));
-});
+
 const PORT = process.env.PORT || 5000;
 // app.listen(PORT, () => {
 //   console.log(`Server running on port ${PORT}`);
@@ -141,4 +127,3 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-export default app;
