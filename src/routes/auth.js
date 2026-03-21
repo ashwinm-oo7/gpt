@@ -254,7 +254,7 @@ router.post("/refresh", async (req, res) => {
     const decoded = jwt.verify(token, REFRESH_SECRET);
 
     const user = await User.findById(decoded.userId);
-    console.log("user.loginSessions", user, user.loginSessions);
+    // console.log("user.loginSessions", user, user.loginSessions);
     if (!user || !user.loginSessions) {
       return res.status(403).json({ msg: "Invalid refresh token" });
     }
@@ -264,7 +264,7 @@ router.post("/refresh", async (req, res) => {
     if (!sessionExists) {
       return res.status(403).json({ msg: "Invalid refresh token" });
     }
-    console.log("User fetch from db", user);
+    // console.log("User fetch from db", user);
     const newAccessToken = jwt.sign(
       { userId: user._id, role: user.role },
       JWT_SECRET,

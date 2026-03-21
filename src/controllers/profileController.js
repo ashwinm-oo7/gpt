@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import otpGenerator from "otp-generator";
 import { sendMail } from "../utils/mailer.js";
 import mongoose from "mongoose"; // For ObjectId check
+import { getUserProfileService } from "../services/profileService.js";
 
 // Helper to validate ObjectId
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -157,5 +158,23 @@ export const verifyOtpAndChangePassword = async (req, res) => {
   } catch (error) {
     console.error("verifyOtpAndChangePassword error:", error);
     res.status(500).json({ msg: "Password change failed" });
+  }
+};
+
+export const getUserProfile = async (req, res) => {
+  try {
+    // const { username } = req.params;
+
+    console.log("getprofile", req.user);
+    const profile = await getUserProfileService(req.userId);
+    res.status(200).json({
+      success: true,
+      data: profile,
+    });
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

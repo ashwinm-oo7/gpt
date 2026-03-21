@@ -55,6 +55,13 @@ const userSchema = new mongoose.Schema({
       token: String,
     },
   ],
+  badges: [
+    {
+      domain: String,
+      level: Number,
+      badge: String,
+    },
+  ],
 });
 
 // Export the model using ES module syntax

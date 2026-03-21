@@ -16,7 +16,7 @@ export const authMiddleware = async (req, res, next) => {
   }
 
   const token = authHeader.split(" ")[1];
-  console.log("Cookies received:", req.cookies);
+  // console.log("Cookies received:", req.cookies);
 
   if (!token) {
     return res.status(401).json({ msg: "Not authorized" });
@@ -26,7 +26,7 @@ export const authMiddleware = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const user = await User.findById(decoded.userId).select("-password");
-    console.log("Decoded JWT:", decoded);
+    // console.log("Decoded JWT:", decoded);
     if (!user) {
       return res.status(401).json({ msg: "User not found" });
     }

@@ -5,13 +5,14 @@ import {
   updateProfile,
   sendPasswordOtp,
   verifyOtpAndChangePassword,
+  getUserProfile,
 } from "../controllers/profileController.js";
 
 import { authMiddleware } from "../middlewares/optionalAuthMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", authMiddleware, getProfile);
+router.get("/me", authMiddleware, getProfile);
 
 router.put("/", authMiddleware, updateProfile);
 
@@ -22,5 +23,6 @@ router.post(
   authMiddleware,
   verifyOtpAndChangePassword,
 );
+router.get("/getid", authMiddleware, getUserProfile);
 
 export default router;
