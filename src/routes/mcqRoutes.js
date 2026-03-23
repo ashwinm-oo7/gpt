@@ -14,6 +14,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import mongoose from "mongoose";
+import Exam from "../models/Exam.js";
 
 // The client will automatically use the GEMINI_API_KEY environment variable
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -165,9 +166,12 @@ router.get("/", authMiddleware, async (req, res) => {
     const filter = {};
     if (domain) filter.domain = domain;
     if (level) filter.level = Number(level);
-    console.log("/getall", level);
+    console.log("/getall", domain);
     const mcqs = await Mcq.find(filter).sort({ level: 1, step: 1 });
-    console.log(mcqs);
+    console.log("/getall", mcqs);
+
+    // console.log(mcqs);
+
     res.json(mcqs);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -369,6 +373,60 @@ router.put("/levels/order", authMiddleware, adminOnly, async (req, res) => {
     res.json({ message: "Level order accepted", order: levels });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// GET LEVELS WITH PROGRESSION
+router.get("/levels/:domain", authMiddleware, async (req, res) => {
+  try {
+    const { domain } = req.params;
+    const userId = req.user._id;
+
+    // 1️⃣ Get all levels for domain
+    const levels = await Mcq.find({ domain }).distinct("level");
+
+    const sortedLevels = levels.sort((a, b) => a - b);
+
+    // 2️⃣ Get user's passed exams
+    const exams = await Exam.find({
+      user: userId,
+      domain,
+      submitted: true,
+    });
+
+    // map: level -> best percentage
+    const progressMap = {};
+    exams.forEach((exam) => {
+      if (
+        !progressMap[exam.level] ||
+        exam.percentage > progressMap[exam.level]
+      ) {
+        progressMap[exam.level] = exam.percentage;
+      }
+    });
+
+    // 3️⃣ Build response
+    const result = sortedLevels.map((level, index) => {
+      if (level === 1) {
+        return {
+          level,
+          unlocked: true,
+        };
+      }
+
+      const prevLevel = level - 1;
+      const prevScore = progressMap[prevLevel] || 0;
+
+      return {
+        level,
+        unlocked: prevScore >= 80,
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error("Level fetch error:", err);
+    res.status(500).json({ message: "Failed to fetch levels" });
   }
 });
 

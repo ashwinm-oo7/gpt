@@ -29,6 +29,7 @@ const examSchema = new mongoose.Schema(
       type: String,
       unique: true,
       sparse: true,
+      default: undefined, // 🔥 IMPORTANT
     },
     certificateEligible: {
       type: Boolean,

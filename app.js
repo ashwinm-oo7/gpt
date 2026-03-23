@@ -16,13 +16,14 @@ import mcqRoutes from "./src/routes/mcqRoutes.js";
 import examRoutes from "./src/routes/exam.js";
 import adminExamRoutes from "./src/routes/adminExam.js";
 import http from "http";
-import { Server } from "socket.io";
+// import { Server } from "socket.io";
 
 const app = express();
 const server = http.createServer(app);
 
 dotenv.config();
 import csrf from "csurf";
+import { initSocket } from "./src/utils/socket.js";
 
 // const csrfProtection = csrf({ cookie: true });
 
@@ -40,13 +41,13 @@ requiredEnvVars.forEach((varName) => {
   }
 });
 // Socket.IO setup
-export const io = new Server(server, {
-  cors: {
-    origin: ["http://localhost:3000", process.env.DeployLink].filter(Boolean),
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
-});
+// export const io = new Server(server, {
+//   cors: {
+//     origin: ["http://localhost:3000", process.env.DeployLink].filter(Boolean),
+//     methods: ["GET", "POST"],
+//     credentials: true,
+//   },
+// });
 
 // MongoDB URI construction
 const username = process.env.MONGO_USERNAME;
@@ -111,6 +112,7 @@ app.use("/api/admin/exams", adminExamRoutes);
 
 // Start the server
 // Socket.IO connection logging
+const io = initSocket(server);
 io.on("connection", (socket) => {
   console.log("✅ Client connected:", socket.id);
 

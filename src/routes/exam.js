@@ -19,6 +19,7 @@ const certLimiter = rateLimit({
 });
 import fs from "fs";
 import { downloadCertificateService } from "../services/certificateService.js";
+import { getIO } from "../utils/socket.js";
 const certificateTemplate = path.resolve("src/assets/certificate-template.png");
 const signatureImage = path.resolve("src/assets/signature.png");
 const sealImage = path.resolve("src/assets/seal.png");
@@ -149,78 +150,115 @@ router.get("/:examId", authMiddleware, async (req, res) => {
 router.post("/submit/:examId", authMiddleware, async (req, res) => {
   try {
     const { examId } = req.params;
-    const { answers } = req.body; // { questionId: "A", ... }
+    const { answers } = req.body;
+
+    // 🔒 Validate examId
+    if (!mongoose.Types.ObjectId.isValid(examId)) {
+      return res.status(400).json({ message: "Invalid exam ID" });
+    }
 
     const exam = await Exam.findById(examId);
-    if (!exam) return res.status(404).json({ message: "Exam not found" });
-    // Prevent double submission
+
+    if (!exam) {
+      return res.status(404).json({ message: "Exam not found" });
+    }
+
+    // 🚫 Prevent double submission
     if (exam.submitted) {
       return res.json({
         message: "Exam already submitted",
         score: exam.score,
+        percentage: exam.percentage,
       });
     }
 
-    // Calculate score
-    // const questions = await Mcq.find({
-    //   domain: exam.domain,
-    //   level: exam.level,
-    // });
+    // 📥 Fetch questions
     const questions = await Mcq.find({
       _id: { $in: exam.questions },
     });
-    const totalQuestions = questions.length;
-    let score = 0;
-    const answerRecords = questions.map((q) => {
-      const selected = answers[q._id] || null;
-      const isCorrect = selected === q.correctAnswer;
-      if (isCorrect) score++;
-      return { questionId: q._id, selectedAnswer: selected, isCorrect };
-    });
-    const percentage = Math.round((score / totalQuestions) * 100);
-    const certificateEligible = exam.level >= 1 && percentage >= 80;
-    const updatedExam = await Exam.findOneAndUpdate(
-      { _id: examId, submitted: false }, // prevents double submit
-      {
-        answers: answerRecords,
-        score,
-        percentage,
-        certificateEligible,
-        certificateId: certificateEligible
-          ? `${exam.domain}-L${exam.level}-${crypto
-              .randomBytes(3)
-              .toString("hex")}`
-          : null,
 
-        submitted: true,
-        endTime: new Date(),
-        certificateIssuedAt: certificateEligible ? new Date() : null,
-      },
+    const totalQuestions = questions.length;
+
+    if (totalQuestions === 0) {
+      return res.status(400).json({
+        message: "No questions found for this exam",
+      });
+    }
+
+    // 🧠 Calculate score
+    let score = 0;
+
+    const answerRecords = questions.map((q) => {
+      const selected = answers?.[q._id] || null;
+      const isCorrect = selected === q.correctAnswer;
+
+      if (isCorrect) score++;
+
+      return {
+        questionId: q._id,
+        selectedAnswer: selected,
+        isCorrect,
+      };
+    });
+
+    const percentage = Math.round((score / totalQuestions) * 100);
+
+    const certificateEligible = percentage >= 80;
+
+    // 🧾 Prepare update object
+    const updateData = {
+      answers: answerRecords,
+      score,
+      percentage,
+      certificateEligible,
+      submitted: true,
+      endTime: new Date(),
+      certificateIssuedAt: certificateEligible ? new Date() : null,
+    };
+
+    // ✅ Only add certificateId if eligible (NO NULL BUG)
+    if (certificateEligible) {
+      updateData.certificateId = `${exam.domain}-L${exam.level}-${crypto
+        .randomBytes(3)
+        .toString("hex")}`;
+    }
+
+    // 🔄 Atomic update (prevents race condition)
+    const updatedExam = await Exam.findOneAndUpdate(
+      { _id: examId, submitted: false },
+      updateData,
       { new: true },
     );
 
     if (!updatedExam) {
       return res.json({ message: "Exam already submitted" });
     }
-    // Emit notification to all connected admins
-    io.emit("newExamAttempt", {
-      message: `${exam.user?.name || "A user"} submitted an exam in ${
+
+    // 📡 SOCKET EVENT
+    const io = getIO();
+
+    io.to("admins").emit("newExamAttempt", {
+      message: `${req.user?.name || req.user?.email || "A user"} submitted ${
         exam.domain
       } Level ${exam.level}`,
       examId: exam._id,
+      percentage,
       createdAt: new Date(),
     });
 
-    res.json({
-      message: "Exam submitted",
+    // ✅ RESPONSE
+    return res.json({
+      message: "Exam submitted successfully",
       score,
       percentage,
       certificateEligible,
       answers: answerRecords,
     });
   } catch (err) {
-    console.error("Error subnitting", err);
-    res.status(500).json({ message: "Failed to submit exam" });
+    console.error("❌ Error submitting exam:", err);
+    return res.status(500).json({
+      message: "Failed to submit exam",
+    });
   }
 });
 

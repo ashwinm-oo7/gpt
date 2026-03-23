@@ -2,12 +2,24 @@ import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import { getBadge } from "./certificateBadge.js";
 
+import path from "path";
+import { fileURLToPath } from "url";
+import { drawGoldTextBorder } from "./certificateLayout.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Assets paths
+const signaturePath = path.join(__dirname, "../assets/signature.png");
+const logoPath = path.join(__dirname, "../assets/certificate-logo.png");
+const certifiedPath = path.join(__dirname, "../assets/certified.png");
+
 export const generateCertificate = async (res, user, exam) => {
   const badge = getBadge(exam.level);
 
   const verifyUrl = `${process.env.DeployLink}/verify/${exam.certificateId}`;
   const qrImage = await QRCode.toDataURL(verifyUrl);
-
+  const text = "MAURYA INSTITUTE";
   const doc = new PDFDocument({
     size: "A4",
     layout: "landscape",
@@ -18,7 +30,6 @@ export const generateCertificate = async (res, user, exam) => {
     "Content-Disposition",
     `attachment; filename=${exam.domain}-certificate.pdf`,
   );
-
   res.setHeader("Content-Type", "application/pdf");
 
   doc.pipe(res);
@@ -26,209 +37,328 @@ export const generateCertificate = async (res, user, exam) => {
   const W = 842;
   const H = 595;
 
-  /*
-  =================================
-  BACKGROUND
-  =================================
-  */
-
+  /* ===============================
+     BACKGROUND
+  =============================== */
+  // base paper
   doc.rect(0, 0, W, H).fill("#fdfaf3");
 
-  /*
-  =================================
-  TRIPLE GOLD BORDER (3D LOOK)
-  =================================
-  */
+  // subtle texture lines
+  for (let i = 0; i < 30; i++) {
+    doc
+      .opacity(0.03)
+      .moveTo(0, i * 20)
+      .lineTo(W, i * 20)
+      .stroke("#c6c3c3");
+  }
+  doc.opacity(1);
+  /* ===============================
+     BORDER
+  =============================== */
+  //   doc
+  //     .lineWidth(10)
+  //     .strokeColor("#f5b30b")
+  //     .rect(25, 25, W - 50, H - 50)
+  //     .stroke();
 
+  // Example logic for a text-based border
+
+  drawGoldTextBorder(doc, W, H);
+
+  doc.save();
+
+  // move origin to center
+  //   doc.translate(842 / 2, 595 / 2);
+  doc.translate(W / 2, H / 2);
+  // rotate diagonally
+  doc.rotate(-45);
+
+  // repeat watermark text (marquee effect)
+
+  doc.fontSize(15);
+  doc.fillColor("#000");
+  doc.opacity(0.04);
+
+  for (let i = -600; i < 600; i += 120) {
+    doc.text(text, -900, i, {
+      width: 1800,
+      align: "center",
+    });
+  }
+
+  doc.restore();
+  doc.opacity(1);
+  /* ===============================
+   CENTER LOGO WATERMARK (PRO)
+=============================== */
+
+  try {
+    const wmSize = 300; // big size
+    const wmX = (W - wmSize) / 2;
+    const wmY = (H - wmSize) / 2;
+
+    doc.save();
+
+    // very light opacity (paper style)
+    doc.opacity(0.06);
+
+    // optional slight rotation for premium feel
+    doc.rotate(0, { origin: [W / 2, H / 2] });
+
+    doc.image(logoPath, wmX, wmY, {
+      width: wmSize,
+    });
+
+    doc.restore();
+    doc.opacity(1);
+  } catch (err) {
+    console.log("Watermark logo not found");
+  }
+  /* ===============================
+     LOGO (TOP CENTER)
+  =============================== */
+
+  try {
+    const logoWidth = 100;
+    const logoX = (W - logoWidth) / 2;
+
+    doc.image(logoPath, logoX, 40, {
+      width: logoWidth,
+      height: 87,
+    });
+  } catch (err) {
+    console.log("Logo not found, skipping");
+  }
+
+  /* ===============================
+     DYNAMIC SPACING
+  =============================== */
+
+  let y = 130;
+
+  const title = "Maurya Institute";
+
+  // ✅ correct center using page width
+  const textWidth = doc.widthOfString(title);
+  const centerX = (642 - textWidth) / 2;
+
+  // 🔥 3D SHADOW (clean + HD)
   doc
-    .lineWidth(12)
-    .strokeColor("#caa64c")
-    .rect(25, 25, W - 50, H - 50)
-    .stroke();
+    .fillColor("#0f172a")
+    .fontSize(42)
+    .text(title, centerX + 3, y + 3);
 
+  doc.fillColor("#1e293b").text(title, centerX + 2, y + 2);
+
+  doc.fillColor("#334155").text(title, centerX + 1, y + 1);
+
+  // ✨ MAIN TEXT
+  doc.fillColor("#2c3e50").text(title, centerX, y);
+
+  // ✨ LIGHT SHINE
   doc
-    .lineWidth(3)
-    .strokeColor("#f5e7a1")
-    .rect(40, 40, W - 80, H - 80)
-    .stroke();
-
-  doc
-    .lineWidth(1)
-    .strokeColor("#9f7c25")
-    .rect(55, 55, W - 110, H - 110)
-    .stroke();
-
-  /*
-  =================================
-  WATERMARK
-  =================================
-  */
-
-  doc.opacity(0.08).fontSize(120).fillColor("#000").text("Maurya", 200, 260);
+    .fillColor("#ffffff")
+    .opacity(0.2)
+    .text(title, centerX - 1, y - 1);
 
   doc.opacity(1);
 
-  /*
-  =================================
-  HEADER
-  =================================
-  */
-
-  doc.fillColor("#2c3e50").fontSize(44).text("Maurya Institute", 0, 85, {
-    align: "center",
-  });
+  y += 43;
+  /* TITLE */
 
   doc
     .fontSize(18)
-    .fillColor("#555")
-    .text("Global Technology Certification Authority", 0, 135, {
-      align: "center",
+    .fillColor("#686868")
+    .text("Certificate of Achievement", 10, y, { align: "center" });
+
+  y += 20;
+
+  /* BADGE */
+
+  const badgePath = path.join(__dirname, "../assets", badge.image);
+
+  try {
+    const badgeSize = 70;
+    const badgeX = (W - badgeSize) / 2;
+
+    // shadow (depth)
+    doc.opacity(0.3);
+    doc.image(badgePath, badgeX + 4, y + 1, {
+      width: badgeSize,
     });
 
-  /*
-  =================================
-  CERTIFICATE TITLE
-  =================================
-  */
-
-  doc
-    .fontSize(30)
-    .fillColor("#000")
-    .text("Certificate of Achievement", 0, 175, {
-      align: "center",
+    // main badge
+    doc.opacity(1);
+    doc.image(badgePath, badgeX, y, {
+      width: badgeSize,
     });
-
-  /*
-  =================================
-  MEDAL BADGE
-  =================================
-  */
-
-  doc.circle(W / 2, 245, 45).fill(badge.color);
+  } catch (err) {
+    console.log("Badge image not found");
+  }
+  y += 70;
 
   doc
-    .fillColor("#fff")
-    .fontSize(30)
-    .text(badge.icon, W / 2 - 12, 230);
+    .fillColor("#444")
+    .fontSize(12)
+    .text(badge.title, 0, y, { align: "center" });
 
-  doc.fillColor("#333").fontSize(14).text(badge.title, 0, 300, {
+  y += 35;
+
+  /* NAME */
+
+  doc.fontSize(18).text("This certificate is proudly presented to", 0, y, {
     align: "center",
   });
 
-  /*
-  =================================
-  PRESENTED TO
-  =================================
-  */
+  y += 30;
 
-  doc.fontSize(18).text("This certificate is proudly presented to", 0, 335, {
+  // name
+  const name = user.name || user.email;
+
+  // 3D shadow layers (bottom-right depth)
+  doc
+    .fillColor("#0d47a1") // dark shadow
+    .fontSize(32)
+    .text(name, 2, y + 2, { align: "center" });
+
+  doc.fillColor("#6a6e72").text(name, 1, y + 1, { align: "center" });
+
+  // MAIN TEXT (top layer)
+  doc.fillColor("#ccced0").text(name, 0, y, { align: "center" });
+
+  // subtle highlight (top-left shine)
+  doc
+    .fillColor("#0d0e0e")
+    .fontSize(32)
+    .text(name, -1, y - 1, { align: "center" });
+  // name end
+
+  y += 50;
+
+  /* COURSE */
+
+  doc.fillColor("#000").fontSize(18).text("for successfully completing", 0, y, {
     align: "center",
   });
 
+  y += 30;
+
   doc
-    .fillColor("#1a73e8")
-    .fontSize(36)
-    .text(user.name || user.email, 0, 365, {
+    .fillColor("#950909")
+    .fontSize(24)
+    .text(`${exam.domain} Level ${exam.level}`, 0, y, {
       align: "center",
     });
 
-  /*
-  =================================
-  COURSE
-  =================================
-  */
+  y += 45;
+
+  /* SCORE */
 
   doc
-    .fillColor("#000")
-    .fontSize(18)
-    .text("for successfully completing", 0, 420, {
-      align: "center",
-    });
-
-  doc.fontSize(24).text(`${exam.domain} Level ${exam.level}`, 0, 450, {
-    align: "center",
-  });
-
-  /*
-  =================================
-  SCORE
-  =================================
-  */
-
-  doc
-    .fontSize(16)
+    .fontSize(14)
     .fillColor("#333")
-    .text(`Score Achieved: ${exam.percentage}%`, 0, 485, {
+    .text(`Score Achieved: ${exam.percentage}%`, 0, y, {
       align: "center",
     });
 
-  /*
-  =================================
-  CERTIFICATE ID
-  =================================
-  */
+  y += 20;
+
+  /* META */
 
   doc
     .fontSize(10)
     .fillColor("#666")
-    .text(`Certificate ID: ${exam.certificateId}`, 0, 510, {
+    .text(`Certificate ID: ${exam.certificateId}`, 0, y, {
       align: "center",
     });
+
+  y += 15;
 
   doc.text(
     `Issued On: ${new Date(exam.certificateIssuedAt).toDateString()}`,
     0,
-    525,
+    y,
     { align: "center" },
   );
 
-  /*
-  =================================
-  SIGNATURE
-  =================================
-  */
+  /* ===============================
+     FOOTER
+  =============================== */
 
-  const sigY = H - 135;
+  const bottomY = H - 120;
+  /* ===============================
+     MICROTEXT SECURITY LINE
+  =============================== */
+  doc
+    .fontSize(6)
+    .opacity(0.4)
+    .text(
+      `MAURYA-INSTITUTE-SECURE-CERTIFICATE-${exam.certificateId}-VERIFY-ONLINE`,
+      50,
+      H - 15,
+    );
 
-  doc.moveTo(120, sigY).lineTo(280, sigY).stroke();
+  doc.opacity(1);
+
+  /* SIGNATURE */
+
+  const sigX = 100;
 
   doc
-    .fontSize(18)
-    .fillColor("#000")
-    .text("MauryaAshwin", 140, sigY + 5);
+    .moveTo(sigX, bottomY)
+    .lineTo(sigX + 160, bottomY)
+    .stroke();
+
+  try {
+    doc.save();
+    doc.rotate(-2, { origin: [sigX, bottomY] });
+
+    doc.image(signaturePath, sigX + 10, bottomY - 40, {
+      width: 130,
+    });
+
+    doc.restore();
+  } catch (err) {
+    console.log("Signature not found");
+  }
 
   doc
-    .fontSize(11)
-    .fillColor("#444")
-    .text("Director", 185, sigY + 30);
+    .fontSize(25)
+    .fillColor("#777")
+    .text("Director", sigX + 35, bottomY + 10);
 
-  /*
-  =================================
-  GOLD SEAL
-  =================================
-  */
+  /* SEAL */
 
-  doc.circle(W / 2, H - 110, 32).fill("#d4af37");
+  const sealX = 35;
+  const sealY = H - 140;
 
-  doc
-    .fillColor("#fff")
-    .fontSize(12)
-    .text("MI", W / 2 - 7, H - 118);
+  try {
+    // soft shadow
+    doc.opacity(0.25);
+    doc.image(certifiedPath, sealX + 6, sealY + 6, {
+      width: 85,
+    });
 
-  /*
-  =================================
-  QR VERIFY
-  =================================
-  */
+    // real seal
+    doc.opacity(1);
+    doc.image(certifiedPath, sealX, sealY, {
+      width: 85,
+    });
+  } catch (err) {
+    console.log("Seal image not found");
+  }
+  /* QR CODE */
 
-  doc.image(qrImage, W - 150, H - 140, {
-    width: 85,
+  const qrX = W - 140;
+
+  doc.image(qrImage, qrX, bottomY - 30, {
+    width: 80,
   });
 
   doc
     .fontSize(9)
     .fillColor("#444")
-    .text("Scan to verify authenticity", W - 160, H - 45);
+    .text("Scan to verify", qrX, bottomY + 55);
 
   doc.end();
 };
