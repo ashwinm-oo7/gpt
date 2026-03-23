@@ -62,7 +62,7 @@ router.get("/attempt/:examId", authMiddleware, adminOnly, async (req, res) => {
       domain: exam.domain,
       level: exam.level,
     });
-    console.log("Get results", exam, questions);
+    // console.log("Get results", exam, questions);
     res.json({
       exam,
       questions,

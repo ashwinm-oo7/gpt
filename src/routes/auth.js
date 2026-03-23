@@ -245,7 +245,7 @@ router.post("/login", loginLimiter, async (req, res) => {
 router.post("/refresh", async (req, res) => {
   const { token } = req.body;
 
-  console.log("/refresh", token);
+  // console.log("/refresh", token);
   if (!token) {
     return res.status(403).json({ msg: "No refresh token" });
   }
@@ -330,7 +330,7 @@ router.post("/logout-all", authMiddleware, async (req, res) => {
 // });
 
 router.get("/me", authMiddleware, async (req, res) => {
-  console.log("Cookies:", req.cookies);
+  // console.log("Cookies:", req.cookies);
   try {
     const user = await User.findById(req.userId).select("-password");
     // console.log("USERID", req.userId);

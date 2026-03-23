@@ -271,6 +271,13 @@ export const generateCertificate = async (res, user, exam) => {
     .text(`Certificate ID: ${exam.certificateId}`, 0, y, {
       align: "center",
     });
+  y += 15;
+
+  /* META */
+
+  doc.fontSize(10).fillColor("#666").text(`Credential ID: ${exam._id}`, 0, y, {
+    align: "center",
+  });
 
   y += 15;
 

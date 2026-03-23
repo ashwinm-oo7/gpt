@@ -81,7 +81,7 @@ router.post("/start", authMiddleware, async (req, res) => {
       submitted: false,
     });
     if (existing) return res.json({ examId: existing._id });
-    console.log("userids", userId);
+    // console.log("userids", userId);
     // Create new exam attempt
     const questions = await Mcq.aggregate([
       { $match: { domain, level } },
@@ -184,6 +184,16 @@ router.post("/submit/:examId", authMiddleware, async (req, res) => {
         message: "No questions found for this exam",
       });
     }
+    // 🔥 CRITICAL: fallback to DB answers if frontend missing
+    const finalAnswers =
+      answers && Object.keys(answers).length > 0
+        ? answers
+        : Object.fromEntries(
+            exam.answers.map((a) => [
+              a.questionId.toString(),
+              a.selectedAnswer,
+            ]),
+          );
 
     // 🧠 Calculate score
     let score = 0;
@@ -382,7 +392,7 @@ router.get(
   certLimiter,
   authMiddleware,
   async (req, res) => {
-    console.log("my-certificates", req.userId);
+    // console.log("my-certificates", req.userId);
     try {
       // 1️⃣ Validate authenticated user
       if (!mongoose.Types.ObjectId.isValid(req.user._id)) {
@@ -438,8 +448,8 @@ router.get(
 router.post("/autosave/:examId", authMiddleware, async (req, res) => {
   try {
     const { examId } = req.params;
-    const { answers, timeLeft } = req.body; // answers: { questionId: "A", ... }
-    console.log("autosave/:examId", examId);
+    const { answers = {}, timeLeft } = req.body;
+    console.log("autosave/:examId", examId, answers);
     // Find the exam, only if it's not submitted
     if (!mongoose.Types.ObjectId.isValid(examId)) {
       return res.status(400).json({ message: "Invalid examId" });
@@ -460,12 +470,7 @@ router.post("/autosave/:examId", authMiddleware, async (req, res) => {
         message: "Exam already submitted",
       });
     }
-    console.log("exams", exam);
-    if (!exam) {
-      return res
-        .status(404)
-        .json({ message: "Exam not found or already submitted" });
-    }
+    // console.log("exams", exam);
     // Update answers partially (don't calculate score yet)
     const answerRecords = Object.entries(answers).map(
       ([questionId, selected]) => ({
@@ -480,14 +485,25 @@ router.post("/autosave/:examId", authMiddleware, async (req, res) => {
     exam.answers.forEach(
       (a) => (updatedAnswersMap[a.questionId.toString()] = a),
     );
-    answerRecords.forEach((a) => (updatedAnswersMap[a.questionId] = a));
+    // New answers (🔥 FIXED .toString())
+    answerRecords.forEach((a) => {
+      updatedAnswersMap[a.questionId.toString()] = a;
+    });
 
     exam.answers = Object.values(updatedAnswersMap);
-    exam.endTime = new Date(Date.now() + timeLeft * 1000); // optional: track remaining time
+
+    // ✅ Update remaining time
+    if (timeLeft !== undefined) {
+      exam.endTime = new Date(Date.now() + timeLeft * 1000);
+    }
 
     await exam.save();
 
-    res.json({ message: "Exam autosaved", savedAt: new Date() });
+    return res.json({
+      message: "Exam autosaved",
+      savedAnswers: exam.answers.length,
+      savedAt: new Date(),
+    });
   } catch (err) {
     console.error("Autosave failed", err);
     res.status(500).json({ message: "Failed to autosave exam" });
@@ -519,7 +535,7 @@ router.get("/attempt/:examId", authMiddleware, adminOnly, async (req, res) => {
 });
 
 router.get(
-  "/certificate/download/:domain/:level",
+  "/certificate/download/:domain/:level/:certificateId",
   certLimiter,
   authMiddleware,
   downloadCertificateService,
