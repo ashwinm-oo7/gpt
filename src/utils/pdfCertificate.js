@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 const signaturePath = path.join(__dirname, "../assets/signature.png");
 const logoPath = path.join(__dirname, "../assets/certificate-logo.png");
 const certifiedPath = path.join(__dirname, "../assets/certified.png");
-
+const cornerPath = path.join(__dirname, "../assets/DesignCorner.png");
 export const generateCertificate = async (res, user, exam) => {
   const badge = getBadge(exam.level);
 
@@ -66,7 +66,70 @@ export const generateCertificate = async (res, user, exam) => {
   drawGoldTextBorder(doc, W, H);
 
   doc.save();
+  /* ===============================
+   SECURITY PATTERN (ANTI-COPY)
+================================= */
 
+  doc.save();
+
+  doc.opacity(0.05);
+  doc.lineWidth(0.5);
+
+  // diagonal pattern
+  for (let i = -H; i < W; i += 12) {
+    doc
+      .moveTo(i, 0)
+      .lineTo(i + H, H)
+      .stroke("#000");
+  }
+
+  // cross pattern (optional for stronger effect)
+  doc.opacity(0.03);
+  for (let i = 0; i < W + H; i += 15) {
+    doc
+      .moveTo(i, 0)
+      .lineTo(i - H, H)
+      .stroke("#434343");
+  }
+
+  doc.restore();
+  /* ===============================
+   CORNER ORNAMENTS
+================================= */
+
+  try {
+    const size = 120; // adjust based on look
+    // TOP LEFT (original)
+    doc.image(cornerPath, 0 + 10, 0 + 9, {
+      width: size,
+    });
+
+    // TOP RIGHT (rotate 90)
+    doc.save();
+    doc.rotate(90, { origin: [W - size - 10, 0] });
+    doc.image(cornerPath, W - size, -size, {
+      width: size,
+    });
+    doc.restore();
+
+    // BOTTOM LEFT (rotate -90)
+    doc.save();
+    doc.rotate(-90, { origin: [0, H - size] });
+    doc.image(cornerPath, -H + size + 365, H - size + 8, {
+      width: size,
+    });
+    doc.restore();
+
+    // BOTTOM RIGHT (rotate 180)
+    doc.save();
+    doc.rotate(180, { origin: [W - size, H - size] });
+    doc.image(cornerPath, W - size - 113, H - size - 110, {
+      width: size,
+    });
+    doc.restore();
+  } catch (err) {
+    console.log("Corner design not found");
+  }
   // move origin to center
   //   doc.translate(842 / 2, 595 / 2);
   doc.translate(W / 2, H / 2);

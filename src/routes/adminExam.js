@@ -13,6 +13,7 @@ const router = express.Router();
 router.get("/domains", authMiddleware, adminOnly, async (req, res) => {
   try {
     const domains = await Exam.distinct("domain");
+    // console.log("Domains", domains);
     res.json(domains);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -71,6 +72,7 @@ router.get("/attempt/:examId", authMiddleware, adminOnly, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
 router.get(
   "/analytics/summary",
   authMiddleware,

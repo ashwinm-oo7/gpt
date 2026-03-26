@@ -45,17 +45,6 @@ router.get("/badges", authMiddleware, async (req, res) => {
     });
   }
 });
-router.get("/leaderboard/:domain", async (req, res) => {
-  const users = await Exam.find({
-    domain: req.params.domain,
-    certificateEligible: true,
-  })
-    .populate("user", "email")
-    .sort({ percentage: -1 })
-    .limit(20);
-
-  res.json(users);
-});
 // START EXAM
 router.post("/start", authMiddleware, async (req, res) => {
   try {
@@ -364,7 +353,7 @@ router.get(
 router.get("/verify/:certificateId", async (req, res) => {
   const exam = await Exam.findOne({
     certificateId: req.params.certificateId,
-  }).populate("user", "email");
+  }).populate("user", "email name");
 
   if (!exam) {
     return res.status(404).json({
@@ -379,6 +368,7 @@ router.get("/verify/:certificateId", async (req, res) => {
   res.json({
     valid: true,
     user: exam.user.email,
+    userfullname: exam.user.name,
     domain: exam.domain,
     level: exam.level,
     score: exam.percentage,
@@ -537,7 +527,6 @@ router.get("/attempt/:examId", authMiddleware, adminOnly, async (req, res) => {
 router.get(
   "/certificate/download/:domain/:level/:certificateId",
   certLimiter,
-  authMiddleware,
   downloadCertificateService,
 );
 export default router;

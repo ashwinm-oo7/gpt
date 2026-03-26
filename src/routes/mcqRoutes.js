@@ -35,7 +35,7 @@ router.post(
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      console.log("File uploaded:", req.file.path);
+      // console.log("File uploaded:", req.file.path);
 
       // Read the file
       const workbook = XLSX.readFile(req.file.path);
@@ -78,7 +78,7 @@ router.post(
         };
       });
 
-      console.log("Formatted MCQs:", formatted);
+      // console.log("Formatted MCQs:", formatted);
 
       // Insert into MongoDB
       await Mcq.insertMany(formatted, { ordered: true }); // stops at first duplicate or invalid
@@ -166,9 +166,9 @@ router.get("/", authMiddleware, async (req, res) => {
     const filter = {};
     if (domain) filter.domain = domain;
     if (level) filter.level = Number(level);
-    console.log("/getall", domain);
+    // console.log("/getall", domain);
     const mcqs = await Mcq.find(filter).sort({ level: 1, step: 1 });
-    console.log("/getall", mcqs);
+    // console.log("/getall", mcqs);
 
     // console.log(mcqs);
 
@@ -237,7 +237,7 @@ router.post("/", authMiddleware, adminOnly, async (req, res) => {
   }
 });
 router.put("/reorder", authMiddleware, adminOnly, async (req, res) => {
-  console.log("BODY RECEIVED:", req.body);
+  // console.log("BODY RECEIVED:", req.body);
   try {
     const { questions } = req.body;
 
@@ -429,5 +429,53 @@ router.get("/levels/:domain", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Failed to fetch levels" });
   }
 });
+// DELETE entire level
+router.post(
+  "/deletedomainlevel",
+  authMiddleware,
+  adminOnly,
+  async (req, res) => {
+    try {
+      const { domain, level } = req.query;
+      console.log("domain level", domain, level);
+      if (!domain || level === undefined) {
+        return res.status(400).json({ message: "Domain and level required" });
+      }
 
+      const result = await Mcq.deleteMany({
+        domain,
+        level: Number(level),
+      });
+      // console.log(
+      //   `Leveldelete Deleted ${result.deletedCount} questions from Level ${level}  `,
+      // );
+      res.json({
+        message: `Deleted ${result.deletedCount} questions from Level ${level}`,
+      });
+    } catch (err) {
+      console.error("Delete level error:", err);
+      res.status(500).json({ message: err.message });
+    }
+  },
+);
+
+router.post("/delete-selected", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !ids.length) {
+      return res.status(400).json({ message: "No IDs provided" });
+    }
+
+    const result = await Mcq.deleteMany({
+      _id: { $in: ids },
+    });
+
+    res.json({
+      message: `Deleted ${result.deletedCount} questions`,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 export default router;

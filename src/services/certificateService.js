@@ -12,10 +12,17 @@ export const downloadCertificateService = async (req, res) => {
   //   });
   const exam = await Exam.findOne({
     certificateId,
-    user: req.user._id, // 🔒 security
     certificateEligible: true,
+  }).populate({
+    path: "user",
+    select: "name email",
+    options: { lean: true },
   });
-
+  const userData = {
+    name: exam.user?.name,
+    email: exam.user?.email,
+  };
+  console.log("userdata", userData);
   if (!exam) {
     return res.status(403).json({
       message: "Certificate not available",
@@ -29,5 +36,5 @@ export const downloadCertificateService = async (req, res) => {
 
   res.setHeader("Content-Type", "application/pdf");
 
-  generateCertificate(res, req.user, exam);
+  generateCertificate(res, userData, exam);
 };
