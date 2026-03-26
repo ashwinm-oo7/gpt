@@ -28,7 +28,7 @@ export const generateCertificate = async (res, user, exam) => {
 
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename=${exam.domain}-certificate.pdf`,
+    `inline; filename=${exam.domain}-certificate.pdf`,
   );
   res.setHeader("Content-Type", "application/pdf");
 
