@@ -14,12 +14,28 @@ const signaturePath = path.join(__dirname, "../assets/signature.png");
 const logoPath = path.join(__dirname, "../assets/certificate-logo.png");
 const certifiedPath = path.join(__dirname, "../assets/certified.png");
 const cornerPath = path.join(__dirname, "../assets/DesignCorner.png");
+import crypto from "crypto"; // top of file
+
 export const generateCertificate = async (res, user, exam) => {
   const badge = getBadge(exam.level);
 
   const verifyUrl = `${process.env.DeployLink}/verify/${exam.certificateId}`;
-  const qrImage = await QRCode.toDataURL(verifyUrl);
   const text = "MAURYA INSTITUTE";
+  const hashData = `${user.name}|${user.email}|${exam.certificateId}|${exam.domain}|${exam.level}|${exam.percentage}|${exam.certificateIssuedAt}`;
+
+  // create SHA-256 hash
+  const certificateHash = crypto
+    .createHash("sha256")
+    .update(hashData)
+    .digest("hex");
+  const verifyPayload = {
+    certificateId: exam.certificateId,
+    hash: certificateHash,
+  };
+
+  // Encode as JSON string and then to QR
+
+  const qrImage = await QRCode.toDataURL(JSON.stringify(verifyPayload));
   const doc = new PDFDocument({
     size: "A4",
     layout: "landscape",
@@ -177,6 +193,39 @@ export const generateCertificate = async (res, user, exam) => {
   } catch (err) {
     console.log("Watermark logo not found");
   }
+  try {
+    const issuedToText = `Issued To: ${user.name || user.email}`;
+    const secretKey = process.env.CERT_SECRET || "default_secret_key";
+
+    // simple AES encryption (hex output)
+    const cipher = crypto.createCipheriv(
+      "aes-256-cbc",
+      crypto.scryptSync(secretKey, "salt", 32),
+      Buffer.alloc(16, 0),
+    );
+    let encrypted = cipher.update(issuedToText, "utf8", "hex");
+    encrypted += cipher.final("hex");
+
+    // draw the hidden text faintly
+    doc.save();
+    doc.opacity(0.05); // very faint
+    doc.fontSize(14);
+    doc.fillColor("#514f4f");
+    doc.rotate(-30, { origin: [W / 1, H / 2] }); // diagonal
+    // fill across page multiple times (like a repeating pattern)
+    for (let i = -W; i < W; i += 200) {
+      doc.text(encrypted, i, H / 4, {
+        width: W,
+        align: "center",
+      });
+    }
+
+    doc.restore();
+    doc.opacity(1);
+  } catch (err) {
+    console.log("Watermark logo not found");
+  }
+
   /* ===============================
      LOGO (TOP CENTER)
   =============================== */
@@ -429,6 +478,16 @@ export const generateCertificate = async (res, user, exam) => {
     .fontSize(9)
     .fillColor("#444")
     .text("Scan to verify", qrX, bottomY + 55);
+  /* ===============================
+   TAMPER-PROOF HASH
+================================= */
 
+  // combine all important info
+  // print hash in microtext somewhere unobtrusive
+  doc
+    .fontSize(6)
+    .opacity(0.3)
+    .fillColor("#333")
+    .text(`CERT-HASH:${certificateHash}`, W - 300, H - 10);
   doc.end();
 };

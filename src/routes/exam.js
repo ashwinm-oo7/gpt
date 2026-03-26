@@ -356,15 +356,24 @@ router.get("/verify/:certificateId", async (req, res) => {
   }).populate("user", "email name");
 
   if (!exam) {
+    console.log("examhashs", exam);
+
     return res.status(404).json({
       valid: false,
     });
   }
-  const hash = crypto
-    .createHash("sha256")
-    .update(exam.certificateId + exam.user._id)
-    .digest("hex");
+  const hashData =
+    exam.certificateId +
+    exam.user._id +
+    exam.user.name +
+    exam.user.email +
+    exam.domain +
+    exam.level +
+    exam.percentage +
+    exam.certificateIssuedAt;
 
+  const hash = crypto.createHash("sha256").update(hashData).digest("hex");
+  console.log("hashs", hash);
   res.json({
     valid: true,
     user: exam.user.email,
