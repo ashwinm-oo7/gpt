@@ -1,5 +1,8 @@
 import Exam from "../models/Exam.js";
-import { generateCertificate } from "../utils/pdfCertificate.js";
+import {
+  generateCertificate,
+  generateCertificateMobile,
+} from "../utils/pdfCertificate.js";
 
 export const downloadCertificateService = async (req, res) => {
   const { domain, level, certificateId } = req.params;

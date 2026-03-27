@@ -491,3 +491,80 @@ export const generateCertificate = async (res, user, exam) => {
     .text(`CERT-HASH:${certificateHash}`, W - 300, H - 10);
   doc.end();
 };
+
+export const generateCertificateMobile = async (res, user, exam) => {
+  const doc = new PDFDocument({
+    size: "A4",
+    layout: "portrait", // ✅ better for mobile
+    margin: 40,
+  });
+
+  doc.pipe(res);
+
+  const W = 595;
+  const H = 842;
+
+  // ✅ Simple background
+  doc.rect(0, 0, W, H).fill("#ffffff");
+
+  // ✅ Title
+  doc
+    .fontSize(26)
+    .fillColor("#222")
+    .text("Maurya Institute", { align: "center" });
+
+  doc.moveDown(0.5);
+
+  doc
+    .fontSize(16)
+    .fillColor("#555")
+    .text("Certificate of Achievement", { align: "center" });
+
+  doc.moveDown(2);
+
+  // ✅ Name
+  doc
+    .fontSize(22)
+    .fillColor("#000")
+    .text(user.name || user.email, { align: "center" });
+
+  doc.moveDown(1);
+
+  // ✅ Course
+  doc.fontSize(16).text(`Completed ${exam.domain} Level ${exam.level}`, {
+    align: "center",
+  });
+
+  doc.moveDown(1);
+
+  // ✅ Score
+  doc.fontSize(14).text(`Score: ${exam.percentage}%`, { align: "center" });
+
+  doc.moveDown(1);
+
+  // ✅ Date
+  doc
+    .fontSize(12)
+    .text(`Issued on: ${new Date(exam.certificateIssuedAt).toDateString()}`, {
+      align: "center",
+    });
+
+  doc.moveDown(2);
+
+  // ✅ QR (important for mobile)
+  const verifyUrl = `${process.env.DeployLink}/verify/${exam.certificateId}`;
+  const qrImage = await QRCode.toDataURL(verifyUrl);
+
+  doc.image(qrImage, W / 2 - 50, doc.y, { width: 100 });
+
+  doc.moveDown(6);
+
+  doc
+    .fontSize(10)
+    .fillColor("#666")
+    .text(`Certificate ID: ${exam.certificateId}`, {
+      align: "center",
+    });
+
+  doc.end();
+};
