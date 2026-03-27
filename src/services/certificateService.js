@@ -3,7 +3,8 @@ import { generateCertificate } from "../utils/pdfCertificate.js";
 
 export const downloadCertificateService = async (req, res) => {
   const { domain, level, certificateId } = req.params;
-
+  const userAgent = req.headers["user-agent"];
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(userAgent);
   //   const exam = await Exam.findOne({
   //     user: req.user._id,
   //     domain,
@@ -36,5 +37,12 @@ export const downloadCertificateService = async (req, res) => {
 
   res.setHeader("Content-Type", "application/pdf");
 
-  generateCertificate(res, userData, exam);
+  // ✅ Call different generator
+  if (isMobile) {
+    console.log("📱 Mobile certificate");
+    return generateCertificateMobile(res, userData, exam);
+  } else {
+    console.log("🖥 Desktop certificate");
+    return generateCertificate(res, userData, exam);
+  }
 };
