@@ -211,14 +211,17 @@ export const generateCertificate = async (res, user, exam) => {
     doc.opacity(0.05); // very faint
     doc.fontSize(14);
     doc.fillColor("#514f4f");
-    doc.rotate(-30, { origin: [W / 1, H / 2] }); // diagonal
-    // fill across page multiple times (like a repeating pattern)
-    for (let i = -W; i < W; i += 200) {
-      doc.text(encrypted, i, H / 4, {
-        width: W,
-        align: "center",
-      });
-    }
+    // doc.rotate(-30, { origin: [W / 1, H / 2] });
+    // for (let i = -W; i < W; i += 200) {
+    //   doc.text(encrypted, i, H / 4, {
+    //     width: W,
+    //     align: "center",
+    //   });
+    // }
+    doc.text(encrypted, 50, H / 2, {
+      width: W - 100,
+      align: "center",
+    });
 
     doc.restore();
     doc.opacity(1);
