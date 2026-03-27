@@ -493,65 +493,87 @@ export const generateCertificate = async (res, user, exam) => {
 };
 
 export const generateCertificateMobile = async (res, user, exam) => {
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename=${exam.domain}-certificate-mobile.pdf`,
+  );
+  res.setHeader("Content-Type", "application/pdf");
+
   const doc = new PDFDocument({
     size: "A4",
-    layout: "portrait", // ✅ better for mobile
+    layout: "portrait",
     margin: 40,
   });
 
   doc.pipe(res);
 
   const W = 595;
-  const H = 842;
 
-  // ✅ Simple background
-  doc.rect(0, 0, W, H).fill("#ffffff");
+  const displayName = user.name || "Certified Candidate";
 
-  // ✅ Title
+  // Background
+  doc.rect(0, 0, 595, 842).fill("#ffffff");
+
+  // Logo
+  try {
+    doc.image(logoPath, W / 2 - 40, 40, { width: 80 });
+  } catch {}
+
+  doc.moveDown(3);
+
+  // Title
   doc
-    .fontSize(26)
+    .fontSize(24)
     .fillColor("#222")
     .text("Maurya Institute", { align: "center" });
 
   doc.moveDown(0.5);
 
   doc
-    .fontSize(16)
+    .fontSize(14)
     .fillColor("#555")
     .text("Certificate of Achievement", { align: "center" });
 
+  doc.moveDown(1.5);
+
+  // Divider
+  doc
+    .moveTo(100, doc.y)
+    .lineTo(W - 100, doc.y)
+    .stroke("#ccc");
+
   doc.moveDown(2);
 
-  // ✅ Name
+  // Name
+  doc.fontSize(20).fillColor("#000").text(displayName, { align: "center" });
+
+  doc.moveDown(1);
+
+  // Course
   doc
-    .fontSize(22)
-    .fillColor("#000")
-    .text(user.name || user.email, { align: "center" });
+    .fontSize(14)
+    .text(`Successfully completed ${exam.domain} Level ${exam.level}`, {
+      align: "center",
+    });
 
   doc.moveDown(1);
 
-  // ✅ Course
-  doc.fontSize(16).text(`Completed ${exam.domain} Level ${exam.level}`, {
-    align: "center",
-  });
+  // Score
+  doc.fontSize(13).text(`Score: ${exam.percentage}%`, { align: "center" });
 
   doc.moveDown(1);
 
-  // ✅ Score
-  doc.fontSize(14).text(`Score: ${exam.percentage}%`, { align: "center" });
-
-  doc.moveDown(1);
-
-  // ✅ Date
+  // Date
   doc
-    .fontSize(12)
+    .fontSize(11)
+    .fillColor("#666")
     .text(`Issued on: ${new Date(exam.certificateIssuedAt).toDateString()}`, {
       align: "center",
     });
 
   doc.moveDown(2);
 
-  // ✅ QR (important for mobile)
+  // QR
   const verifyUrl = `${process.env.DeployLink}/verify/${exam.certificateId}`;
   const qrImage = await QRCode.toDataURL(verifyUrl);
 
