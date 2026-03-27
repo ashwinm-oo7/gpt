@@ -29,10 +29,10 @@ export const downloadCertificateService = async (req, res) => {
     });
   }
 
-  res.setHeader(
-    "Content-Disposition",
-    `attachment; filename=certificate-${exam.domain}-L${exam.level}.pdf`,
-  );
+  // res.setHeader(
+  //   "Content-Disposition",
+  //   `attachment; filename=certificate-${exam.domain}-L${exam.level}.pdf`,
+  // );
 
   res.setHeader("Content-Type", "application/pdf");
 

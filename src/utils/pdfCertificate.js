@@ -28,14 +28,11 @@ export const generateCertificate = async (res, user, exam) => {
     .createHash("sha256")
     .update(hashData)
     .digest("hex");
-  const verifyPayload = {
-    certificateId: exam.certificateId,
-    hash: certificateHash,
-  };
 
   // Encode as JSON string and then to QR
+  const qrImage = await QRCode.toDataURL(verifyUrl);
 
-  const qrImage = await QRCode.toDataURL(JSON.stringify(verifyPayload));
+  // const qrImage = await QRCode.toDataURL(JSON.stringify(verifyPayload));
   const doc = new PDFDocument({
     size: "A4",
     layout: "landscape",
@@ -116,6 +113,8 @@ export const generateCertificate = async (res, user, exam) => {
   try {
     const size = 120; // adjust based on look
     // TOP LEFT (original)
+    doc.save();
+    doc.opacity(0.4);
     doc.image(cornerPath, 0 + 10, 0 + 9, {
       width: size,
     });
@@ -142,6 +141,7 @@ export const generateCertificate = async (res, user, exam) => {
     doc.image(cornerPath, W - size - 113, H - size - 110, {
       width: size,
     });
+
     doc.restore();
   } catch (err) {
     console.log("Corner design not found");
