@@ -7,8 +7,7 @@ import {
 export const downloadCertificateService = async (req, res) => {
   const { domain, level, certificateId } = req.params;
   const userAgent = req.headers["user-agent"];
-  const isMobile =
-    /Android|iPhone|iPad|iPod/i.test(userAgent) && window.innerWidth < 768;
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(userAgent);
   //   const exam = await Exam.findOne({
   //     user: req.user._id,
   //     domain,
