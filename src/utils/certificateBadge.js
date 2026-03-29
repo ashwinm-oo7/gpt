@@ -20,7 +20,7 @@ export const getBadge = (level) => {
   return (
     badges[level] || {
       title: "Master Certification",
-      image: "master.png",
+      image: "gold.png",
       color: "#b29600",
     }
   );

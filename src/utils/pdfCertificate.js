@@ -5,7 +5,7 @@ import { getBadge } from "./certificateBadge.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import { drawGoldTextBorder } from "./certificateLayout.js";
-
+import fs from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -15,7 +15,10 @@ const logoPath = path.join(__dirname, "../assets/certificate-logo.png");
 const certifiedPath = path.join(__dirname, "../assets/certified.png");
 const cornerPath = path.join(__dirname, "../assets/DesignCorner.png");
 import crypto from "crypto"; // top of file
-
+const signatureBuffer = fs.readFileSync(signaturePath);
+const logoBuffer = fs.readFileSync(logoPath);
+const certifiedBuffer = fs.readFileSync(certifiedPath);
+const cornerBuffer = fs.readFileSync(cornerPath);
 export const generateCertificate = async (res, user, exam) => {
   const badge = getBadge(exam.level);
 
@@ -111,15 +114,17 @@ export const generateCertificate = async (res, user, exam) => {
 ================================= */
 
   try {
-    const size = 120; // adjust based on look
-    // TOP LEFT (original)
-    doc.save();
-    doc.opacity(0.4);
-    doc.image(cornerPath, 0 + 10, 0 + 9, {
+    const size = 120;
+
+    doc.save(); // ✅ save state
+    doc.opacity(0.15); // 🔥 adjust here (0.1–0.2 is sweet spot)
+
+    // TOP LEFT
+    doc.image(cornerBuffer, 10, 9, {
       width: size,
     });
 
-    // TOP RIGHT (rotate 90)
+    // TOP RIGHT
     doc.save();
     doc.rotate(90, { origin: [W - size - 10, 0] });
     doc.image(cornerPath, W - size, -size, {
@@ -127,22 +132,23 @@ export const generateCertificate = async (res, user, exam) => {
     });
     doc.restore();
 
-    // BOTTOM LEFT (rotate -90)
+    // BOTTOM LEFT
     doc.save();
     doc.rotate(-90, { origin: [0, H - size] });
-    doc.image(cornerPath, -H + size + 365, H - size + 8, {
+    doc.image(cornerBuffer, -H + size + 365, H - size + 8, {
       width: size,
     });
     doc.restore();
 
-    // BOTTOM RIGHT (rotate 180)
+    // BOTTOM RIGHT
     doc.save();
     doc.rotate(180, { origin: [W - size, H - size] });
-    doc.image(cornerPath, W - size - 113, H - size - 110, {
+    doc.image(cornerBuffer, W - size - 113, H - size - 110, {
       width: size,
     });
-
     doc.restore();
+
+    doc.restore(); // ✅ restore opacity back to normal
   } catch (err) {
     console.log("Corner design not found");
   }
@@ -184,7 +190,7 @@ export const generateCertificate = async (res, user, exam) => {
     // optional slight rotation for premium feel
     doc.rotate(0, { origin: [W / 2, H / 2] });
 
-    doc.image(logoPath, wmX, wmY, {
+    doc.image(logoBuffer, wmX, wmY, {
       width: wmSize,
     });
 
@@ -208,7 +214,7 @@ export const generateCertificate = async (res, user, exam) => {
 
     // draw the hidden text faintly
     doc.save();
-    doc.opacity(0.05); // very faint
+    doc.opacity(0.05);
     doc.fontSize(14);
     doc.fillColor("#514f4f");
     doc.rotate(-30, { origin: [W / 1, H / 2] }); // diagonal
@@ -234,7 +240,7 @@ export const generateCertificate = async (res, user, exam) => {
     const logoWidth = 100;
     const logoX = (W - logoWidth) / 2;
 
-    doc.image(logoPath, logoX, 40, {
+    doc.image(logoBuffer, logoX, 40, {
       width: logoWidth,
       height: 87,
     });
@@ -287,7 +293,8 @@ export const generateCertificate = async (res, user, exam) => {
 
   /* BADGE */
 
-  const badgePath = path.join(__dirname, "../assets", badge.image);
+  const badgeBuffer = path.join(__dirname, "../assets", badge.image);
+  const badgePath = fs.readFileSync(badgeBuffer);
 
   try {
     const badgeSize = 70;
@@ -380,17 +387,21 @@ export const generateCertificate = async (res, user, exam) => {
   doc
     .fontSize(10)
     .fillColor("#666")
-    .text(`Certificate ID: ${exam.certificateId}`, 0, y, {
+    .text(`Credential ID: ${exam.certificateId}`, 0, y, {
       align: "center",
     });
+
   y += 15;
 
-  /* META */
-
-  doc.fontSize(10).fillColor("#666").text(`Credential ID: ${exam._id}`, 0, y, {
-    align: "center",
-  });
-
+  doc
+    .fontSize(10)
+    .fillColor("#666")
+    .text(
+      `Verify: ${process.env.DeployLink}/verify/${exam.certificateId}`,
+      0,
+      y,
+      { align: "center" },
+    );
   y += 15;
 
   doc.text(
@@ -432,7 +443,7 @@ export const generateCertificate = async (res, user, exam) => {
     doc.save();
     doc.rotate(-2, { origin: [sigX, bottomY] });
 
-    doc.image(signaturePath, sigX + 10, bottomY - 40, {
+    doc.image(signatureBuffer, sigX + 10, bottomY - 40, {
       width: 130,
     });
 
@@ -454,13 +465,13 @@ export const generateCertificate = async (res, user, exam) => {
   try {
     // soft shadow
     doc.opacity(0.25);
-    doc.image(certifiedPath, sealX + 6, sealY + 6, {
+    doc.image(certifiedBuffer, sealX + 6, sealY + 6, {
       width: 85,
     });
 
     // real seal
     doc.opacity(1);
-    doc.image(certifiedPath, sealX, sealY, {
+    doc.image(certifiedBuffer, sealX, sealY, {
       width: 85,
     });
   } catch (err) {
@@ -516,7 +527,7 @@ export const generateCertificateMobile = async (res, user, exam) => {
 
   // Logo
   try {
-    doc.image(logoPath, W / 2 - 40, 40, { width: 80 });
+    doc.image(logoBuffer, W / 2 - 40, 40, { width: 80 });
   } catch {}
 
   doc.moveDown(3);

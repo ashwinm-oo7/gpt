@@ -260,11 +260,12 @@ router.post("/refresh", async (req, res) => {
     }
 
     const sessionExists = user.loginSessions.find((s) => s.token === token);
-    console.log("Incoming token:", token);
-    console.log(
-      "Stored tokens:",
-      user.loginSessions.map((s) => s.token),
-    );
+    // console.log("Incoming token:", token);
+
+    // console.log(
+    //   "Stored tokens:",
+    //   user.loginSessions.map((s) => s.token),
+    // );
     if (!sessionExists) {
       console.log("sessionExists", sessionExists);
       return res.status(403).json({ msg: "Invalid refresh token" });

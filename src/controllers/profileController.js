@@ -165,7 +165,7 @@ export const getUserProfile = async (req, res) => {
   try {
     // const { username } = req.params;
 
-    console.log("getprofile", req.user);
+    // console.log("getprofile", req.user);
     const profile = await getUserProfileService(req.userId);
     res.status(200).json({
       success: true,

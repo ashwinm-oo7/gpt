@@ -15,7 +15,7 @@ import mongoose from "mongoose";
 import path from "path";
 const certLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 50,
+  max: 500,
 });
 import fs from "fs";
 import { downloadCertificateService } from "../services/certificateService.js";
@@ -538,4 +538,5 @@ router.get(
   certLimiter,
   downloadCertificateService,
 );
+
 export default router;
