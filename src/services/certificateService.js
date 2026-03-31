@@ -47,8 +47,9 @@ export const downloadCertificateService = async (req, res) => {
       "Content-Disposition",
       `attachment; filename=certificate-${exam.domain}-L${exam.level}.pdf`,
     );
+    return generateCertificate(res, userData, exam);
 
-    return generateCertificateMobile(res, userData, exam);
+    // return generateCertificateMobile(res, userData, exam);
   } else {
     console.log("🖥 Desktop certificate");
     return generateCertificate(res, userData, exam);
