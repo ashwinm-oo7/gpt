@@ -72,7 +72,10 @@ app.use(
     crossOriginResourcePolicy: false,
   }),
 );
-const allowedOrigins = ["http://localhost:3000"];
+const allowedOrigins = [
+  "https://mauryagpt.vercel.app",
+  "http://localhost:3000",
+];
 
 if (process.env.DeployLink) {
   allowedOrigins.push(process.env.DeployLink);
