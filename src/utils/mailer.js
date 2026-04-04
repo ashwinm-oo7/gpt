@@ -6,6 +6,7 @@ dotenv.config(); // loads env vars from .env
 // Create reusable transporter
 const transporter = nodemailer.createTransport({
   service: "gmail", // or use host/port if using SMTP server
+  host: "smtp.gmail.com",
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
