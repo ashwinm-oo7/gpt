@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.js"; // Use .js because it's an ES module
 import Otp from "../models/otp.js"; // Add this at the top
-import { sendMail } from "../utils/mailer.js";
+import { parseIdentifier, sendMail, sendTelegramOtp } from "../utils/mailer.js";
 import { getOtpTemplate } from "../templates/otpTemplate.js";
 import dotenv from "dotenv";
 import { UAParser } from "ua-parser-js";
@@ -32,10 +32,10 @@ const loginLimiter = rateLimit({
   max: 10,
   message: "Too many login attempts. Try again later.",
 });
-
 router.post("/send-otp", async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ msg: "Email is required" });
+  const { identifier } = req.body;
+  if (!identifier) return res.status(400).json({ msg: "Email is required" });
+  const email = identifier; // store everything in email column
 
   const existingUser = await User.findOne({ email });
   if (existingUser) return res.status(400).json({ msg: "User already exists" });
@@ -51,12 +51,22 @@ router.post("/send-otp", async (req, res) => {
   console.log("otp", otp);
   try {
     await Otp.create({ email, otp });
+    let result;
+    const parsed = parseIdentifier(identifier);
 
-    const result = await sendMail({
-      to: email,
-      subject: "Your OTP for Registration",
-      html: getOtpTemplate(otp, email),
-    });
+    if (parsed.type === "email") {
+      result = await sendMail({
+        to: email,
+        subject: "Your OTP for Registration",
+        html: getOtpTemplate(otp, identifier),
+      });
+    } else if (parsed.type === "telegram") {
+      // 🤖 TELEGRAM FLOW
+      result = await sendTelegramOtp(identifier, otp);
+    } else {
+      return res.status(400).json({ msg: "Invalid email or Telegram ID" });
+    }
+
     console.log("response send otp", result);
     if (!result.success) {
       console.error("❌ Email failed:", result.error);
@@ -74,8 +84,9 @@ router.post("/send-otp", async (req, res) => {
 
 // Route: Verify OTP and Register
 router.post("/verify-otp", async (req, res) => {
-  const { email, password, otp } = req.body;
-  console.log("Received OTP verification request:", { email, otp });
+  const { identifier, password, otp } = req.body;
+  console.log("Received OTP verification request:", { identifier, otp });
+  const email = identifier; // store same field
 
   try {
     const record = await Otp.findOne({ email, otp });
