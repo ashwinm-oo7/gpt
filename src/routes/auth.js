@@ -52,12 +52,19 @@ router.post("/send-otp", async (req, res) => {
   try {
     await Otp.create({ email, otp });
 
-    const respo = await sendMail({
+    const result = await sendMail({
       to: email,
       subject: "Your OTP for Registration",
       html: getOtpTemplate(otp, email),
     });
-    console.log("response send otp", respo);
+    console.log("response send otp", result);
+    if (!result.success) {
+      console.error("❌ Email failed:", result.error);
+      return res
+        .status(500)
+        .json({ msg: result.error || "Failed to send OTP email" });
+    }
+
     res.json({ msg: "OTP sent to email." });
   } catch (error) {
     console.error("Email send error:", error);
