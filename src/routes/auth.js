@@ -33,8 +33,8 @@ const loginLimiter = rateLimit({
   message: "Too many login attempts. Try again later.",
 });
 
-const { email } = req.body;
 router.post("/send-otp", async (req, res) => {
+  const { email } = req.body;
   if (!email) return res.status(400).json({ msg: "Email is required" });
 
   const existingUser = await User.findOne({ email });
@@ -52,12 +52,12 @@ router.post("/send-otp", async (req, res) => {
   try {
     await Otp.create({ email, otp });
 
-    const reso = await sendMail({
+    const respo = await sendMail({
       to: email,
       subject: "Your OTP for Registration",
       html: getOtpTemplate(otp, email),
     });
-    console.log("response send otp", reso);
+    console.log("response send otp", respo);
     res.json({ msg: "OTP sent to email." });
   } catch (error) {
     console.error("Email send error:", error);
