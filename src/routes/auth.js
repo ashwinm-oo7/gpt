@@ -67,7 +67,7 @@ router.post("/send-otp", async (req, res) => {
       return res.status(400).json({ msg: "Invalid email or Telegram ID" });
     }
 
-    console.log("response send otp", result);
+    // console.log("response send otp", result);
     if (!result.success) {
       console.error("❌ Email failed:", result.error);
       return res

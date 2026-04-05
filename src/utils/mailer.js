@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import axios from "axios";
 
 dotenv.config(); // loads env vars from .env
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const BASE_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 // Create reusable transporter
 const transporter = nodemailer.createTransport({
@@ -35,24 +37,57 @@ export const sendMail = async ({ to, subject, html }) => {
   }
 };
 
-export const sendTelegramOtp = async (chatId, otp) => {
+export const sendTelegramMessage = async ({ chatId, text }) => {
   try {
-    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-
-    const message = `🔐 Your OTP is: ${otp}`;
-
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-
-    await axios.post(url, {
+    const res = await axios.post(`${BASE_URL}/sendMessage`, {
       chat_id: chatId,
-      text: message,
+      text,
+      parse_mode: "HTML", // supports formatting
     });
 
-    return { success: true };
+    return {
+      success: true,
+      data: res.data,
+    };
   } catch (error) {
-    console.error("Telegram error:", error.response?.data || error.message);
-    return { success: false, error: "Telegram OTP failed" };
+    console.error("❌ Telegram Error:", error.response?.data || error.message);
+
+    return {
+      success: false,
+      error: error.response?.data || error.message,
+    };
   }
+};
+export const sendTelegramOtp = async (chatId, otp) => {
+  const appName = "Maurya AI"; // you can move to env later
+  const appLink = process.env.DeployLink || "https://yourwebsite.com";
+
+  const message = `
+🔐 <b>${appName} • Secure Verification</b>
+
+━━━━━━━━━━━━━━━
+
+Your One-Time Password (OTP):
+
+👉 <b style="font-size:18px;">${otp}</b>
+
+⏳ Valid for <b>5 minutes</b>
+
+━━━━━━━━━━━━━━━
+
+⚠️ <b>Security Notice</b>
+Do not share this code with anyone.
+Our team will never ask for your OTP.
+
+━━━━━━━━━━━━━━━
+
+🌐 <a href="${appLink}">Open ${appName}</a>
+`;
+
+  return await sendTelegramMessage({
+    chatId,
+    text: message,
+  });
 };
 export const parseIdentifier = (value) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -84,4 +119,27 @@ export const parseIdentifier = (value) => {
     type: "invalid",
     value,
   };
+};
+export const sendTelegramLoginAlert = async ({
+  chatId,
+  ip,
+  device,
+  browser,
+  os,
+}) => {
+  const message = `
+🚨 <b>New Login Detected</b>
+
+Device: ${browser} on ${os}
+Type: ${device}
+IP: ${ip}
+Time: ${new Date().toLocaleString()}
+
+If this wasn't you, change password immediately.
+  `;
+
+  return await sendTelegramMessage({
+    chatId,
+    text: message,
+  });
 };
