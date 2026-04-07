@@ -16,7 +16,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const BASE_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 // Create reusable transporter
-const transporterWAIT = nodemailer.createTransport({
+const transporterWAITS = nodemailer.createTransport({
   service: "gmail",
   host: "smtp.gmail.com",
   port: 587,
