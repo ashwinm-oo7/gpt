@@ -1,14 +1,23 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import axios from "axios";
+import { google } from "googleapis";
+
+const oAuth2Client = new google.auth.OAuth2(
+  process.env.CLIENT_ID,
+  process.env.CLIENT_SECRET,
+);
+oAuth2Client.setCredentials({
+  refresh_token: process.env.REFRESH_TOKEN,
+});
 
 dotenv.config(); // loads env vars from .env
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const BASE_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 // Create reusable transporter
-const transporter = nodemailer.createTransport({
-  service: "gmail", // or use host/port if using SMTP server
+const transporterWAIT = nodemailer.createTransport({
+  service: "gmail",
   host: "smtp.gmail.com",
   port: 587,
   secure: false,
@@ -18,6 +27,19 @@ const transporter = nodemailer.createTransport({
   },
   tls: {
     rejectUnauthorized: false,
+  },
+});
+const accessToken = await oAuth2Client.getAccessToken();
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    type: "OAuth2",
+    user: process.env.EMAIL_USER,
+    clientId: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    refreshToken: process.env.REFRESH_TOKEN,
+    accessToken: accessToken.token,
   },
 });
 
@@ -36,7 +58,7 @@ export const sendMail = async ({ to, subject, html }) => {
     return { success: true };
   } catch (error) {
     console.error("Error sending email:", error);
-    return { success: false, error };
+    return { success: false, error: error.message };
   }
 };
 
