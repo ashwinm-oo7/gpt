@@ -81,44 +81,27 @@ if (process.env.DeployLink) {
   allowedOrigins.push(process.env.DeployLink);
 }
 
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       // Allow requests with no origin (like mobile apps or curl)
-//       if (!origin || allowedOrigins.includes(origin)) {
-//         callback(null, true);
-//       } else {
-//         callback(
-//           new Error(`CORS policy does not allow access from origin ${origin}`),
-//         );
-//       }
-//     },
-//     methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
-//     allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
-//     credentials: true,
-//   }),
-// );
-
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(
+          new Error(`CORS policy does not allow access from origin ${origin}`),
+        );
+      }
+    },
+    methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
+    credentials: true,
+  }),
+);
 // app.get("/api/csrf-token",csrfProtection, (req, res) => {
 //   res.json({ csrfToken: req.csrfToken() });
 // });
 // Use the chat routes
-
-app.use(
-  cors({
-    origin: true, // allow all origins temporarily
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: "*",
-  }),
-);
-
-// VERY IMPORTANT
-app.options("*", cors());
-app.use((req, res, next) => {
-  console.log("👉 Incoming:", req.method, req.url);
-  next();
-});
 app.use("/chats", chatRoutes);
 app.use("/api/auth", LoginRoutes);
 app.use("/search-engine", searchEngineRoutes);

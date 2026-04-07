@@ -10,11 +10,14 @@ const BASE_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const transporter = nodemailer.createTransport({
   service: "gmail", // or use host/port if using SMTP server
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false,
   },
 });
 
