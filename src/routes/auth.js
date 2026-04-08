@@ -14,6 +14,7 @@ import {
   adminOnly,
 } from "../middlewares/optionalAuthMiddleware.js";
 import rateLimit from "express-rate-limit";
+import telegramUser from "../models/telegramUser.js";
 
 const router = express.Router();
 dotenv.config();
@@ -26,11 +27,62 @@ const JWT_EXP = process.env.JWT_EXPIRES_IN;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
 const JWT_REFRESH_EXP = process.env.JWT_REFRESH_EXP || "7d";
 const isProduction = process.env.NODE_ENV === "production";
+import crypto from "crypto";
 
 const loginLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 10,
   message: "Too many login attempts. Try again later.",
+});
+
+router.get("/telegram-login-token", (req, res) => {
+  const token = crypto.randomBytes(16).toString("hex");
+
+  // store temporarily (Redis or memory)
+  global.telegramLoginTokens = global.telegramLoginTokens || {};
+  global.telegramLoginTokens[token] = {
+    createdAt: Date.now(),
+  };
+
+  res.json({
+    token,
+    botLink: `https://t.me/MauryaTechBot?start=${token}`,
+  });
+});
+
+router.post("/telegram-login-verify", async (req, res) => {
+  const { token } = req.body;
+
+  const record = global.telegramLoginTokens?.[token];
+
+  if (!record || !record.verified) {
+    return res.status(400).json({ msg: "Not verified yet" });
+  }
+
+  const { username } = record;
+
+  // Check or create user
+  let user = await User.findOne({ email: username });
+
+  if (!user) {
+    user = new User({
+      email: username, // you can store separately if needed
+      password: "telegram-auth",
+    });
+    await user.save();
+  }
+
+  // generate JWT
+  const accessToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
+
+  delete global.telegramLoginTokens[token]; // cleanup
+
+  res.json({
+    msg: "Login success",
+    accessToken,
+  });
 });
 router.post("/send-otp", async (req, res) => {
   const { identifier } = req.body;
@@ -40,11 +92,12 @@ router.post("/send-otp", async (req, res) => {
   const existingUser = await User.findOne({ email });
   if (existingUser) return res.status(400).json({ msg: "User already exists" });
   const recentOtp = await Otp.findOne({ email }).sort({ createdAt: -1 });
-  if (recentOtp && Date.now() - recentOtp.createdAt.getTime() < 60000) {
-    return res.status(429).json({
-      msg: "Please wait at least 60 seconds before requesting another OTP.",
-    });
-  }
+
+  // if (recentOtp && Date.now() - recentOtp.createdAt.getTime() < 600000) {
+  //   return res.status(429).json({
+  //     msg: "Please wait at least 60 seconds before requesting another OTP.",
+  //   });
+  // }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   // otpStore.set(email, { otp, expires: Date.now() + 5 * 60 * 1000 });
@@ -63,6 +116,18 @@ router.post("/send-otp", async (req, res) => {
     } else if (parsed.type === "telegram") {
       // 🤖 TELEGRAM FLOW
       result = await sendTelegramOtp(identifier, otp);
+    } else if (parsed.type === "telegram_username") {
+      const tgUser = await telegramUser.findOne({
+        username: parsed.value.replace("@", ""),
+      });
+
+      if (!tgUser) {
+        return res.status(400).json({
+          msg: "Please start our Telegram bot first: https://t.me/MauryaTechBot",
+        });
+      }
+
+      result = await sendTelegramOtp(tgUser.chatId, otp);
     } else {
       return res.status(400).json({ msg: "Invalid email or Telegram ID" });
     }
@@ -71,7 +136,7 @@ router.post("/send-otp", async (req, res) => {
     if (!result.success) {
       console.error("❌ Email failed:", result.error);
       return res
-        .status(500)
+        .status(400)
         .json({ msg: result.error || "Failed to send OTP email" });
     }
 

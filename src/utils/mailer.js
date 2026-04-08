@@ -75,11 +75,20 @@ export const sendTelegramMessage = async ({ chatId, text }) => {
       data: res.data,
     };
   } catch (error) {
-    console.error("❌ Telegram Error:", error.response?.data || error.message);
+    const errData = error.response?.data;
+
+    console.error("❌ Telegram Error:", errData || error.message);
+    if (errData?.description?.includes("chat not found")) {
+      return {
+        success: false,
+        error:
+          "Telegram not connected. Please start the bot first: https://t.me/MauryaTechBot",
+      };
+    }
 
     return {
       success: false,
-      error: error.response?.data || error.message,
+      error: errData?.description || error.message,
     };
   }
 };
@@ -115,34 +124,39 @@ Our team will never ask for your OTP.
   });
 };
 export const parseIdentifier = (value) => {
+  const input = value.trim();
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  if (emailRegex.test(value)) {
+  // ✅ Email
+  if (emailRegex.test(input)) {
     return {
       type: "email",
-      value,
+      value: input,
     };
   }
 
-  // Telegram username (@username)
-  if (value.startsWith("@")) {
+  // ✅ Numeric → Telegram chat ID
+  if (/^\d+$/.test(input)) {
     return {
       type: "telegram",
-      value: value.replace("@", ""),
+      value: input,
     };
   }
 
-  // Telegram chat ID (numbers)
-  if (/^\d+$/.test(value)) {
+  // ✅ Username (with or without @)
+  const username = input.startsWith("@") ? input.slice(1) : input;
+
+  if (/^[a-zA-Z0-9_]{5,}$/.test(username)) {
     return {
-      type: "telegram",
-      value,
+      type: "telegram_username",
+      value: username,
     };
   }
 
   return {
     type: "invalid",
-    value,
+    value: input,
   };
 };
 export const sendTelegramLoginAlert = async ({
