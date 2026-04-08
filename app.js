@@ -114,7 +114,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/mcq", mcqRoutes);
 app.use("/api/exam", examRoutes);
 app.use("/api/admin/exams", adminExamRoutes);
-app.use("/api/telegram", telegramRoutes);
+app.use("/auth", telegramRoutes);
 // Start the server
 // Socket.IO connection logging
 const io = initSocket(server);
