@@ -3,7 +3,7 @@ import TelegramUser from "../models/telegramUser.js";
 
 const router = express.Router();
 
-router.post("/webhook", async (req, res) => {
+router.post("/telegram-webhook", async (req, res) => {
   try {
     const message = req.body.message;
     if (!message) return res.sendStatus(200);
