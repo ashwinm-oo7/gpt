@@ -4,13 +4,22 @@ import TelegramUser from "../models/telegramUser.js";
 const router = express.Router();
 
 router.post("/telegram-webhook", async (req, res) => {
+  res.sendStatus(200);
+
+  // ✅ Process async AFTER response
+  handleTelegram(req.body);
+});
+
+const handleTelegram = async (body) => {
   try {
-    const message = req.body.message;
-    if (!message) return res.sendStatus(200);
+    const message = body.message;
+    if (!message) return;
 
     const chatId = message.chat.id;
-    const username = message.from.username;
-    const startPayload = message.text?.split(" ")[1]; // 👈 token
+    const username = message.from.username || `user_${message.from.id}`;
+    const startPayload = message.text?.split(" ")[1];
+
+    console.log("📩 Incoming:", username, chatId, startPayload);
 
     // Save user mapping
     await TelegramUser.findOneAndUpdate(
@@ -24,14 +33,11 @@ router.post("/telegram-webhook", async (req, res) => {
       global.telegramLoginTokens[startPayload].chatId = chatId;
       global.telegramLoginTokens[startPayload].username = username;
       global.telegramLoginTokens[startPayload].verified = true;
+
+      console.log("✅ VERIFIED TOKEN:", startPayload);
     }
-
-    console.log("✅ VERIFIED TOKEN:", startPayload);
-
-    res.sendStatus(200);
   } catch (err) {
-    console.error(err);
-    res.sendStatus(500);
+    console.error("❌ Telegram async error:", err);
   }
-});
+};
 export default router;
