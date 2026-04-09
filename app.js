@@ -1,3 +1,4 @@
+import http from "http";
 import dotenv from "dotenv";
 import express from "express";
 import mongoose from "mongoose";
@@ -16,12 +17,11 @@ import mcqRoutes from "./src/routes/mcqRoutes.js";
 import examRoutes from "./src/routes/exam.js";
 import adminExamRoutes from "./src/routes/adminExam.js";
 import telegramRoutes from "./src/routes/telegram.js";
-
-import http from "http";
-// import { Server } from "socket.io";
-
 const app = express();
 const server = http.createServer(app);
+const io = initSocket(server);
+global.io = io; // ✅ VERY IMPORTANT
+// import { Server } from "socket.io";
 
 dotenv.config();
 import csrf from "csurf";
@@ -117,16 +117,21 @@ app.use("/api/admin/exams", adminExamRoutes);
 app.use("/auth", telegramRoutes);
 // Start the server
 // Socket.IO connection logging
-const io = initSocket(server);
+
 io.on("connection", (socket) => {
   console.log("✅ Client connected:", socket.id);
+
+  socket.on("join_room", (token) => {
+    console.log("📥 Joined room:", token);
+    socket.join(token);
+  });
 
   socket.on("disconnect", () => {
     console.log("❌ Client disconnected:", socket.id);
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 6000;
 // app.listen(PORT, () => {
 //   console.log(`Server running on port ${PORT}`);
 // });

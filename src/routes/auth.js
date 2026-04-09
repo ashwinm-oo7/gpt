@@ -42,7 +42,11 @@ router.get("/telegram-login-token", (req, res) => {
   global.telegramLoginTokens = global.telegramLoginTokens || {};
   global.telegramLoginTokens[token] = {
     createdAt: Date.now(),
+    verified: false,
   };
+
+  console.log("🎫 Token generated:", token);
+  console.log("📦 Current tokens:", Object.keys(global.telegramLoginTokens));
 
   res.json({
     token,
@@ -53,35 +57,81 @@ router.get("/telegram-login-token", (req, res) => {
 router.post("/telegram-login-verify", async (req, res) => {
   const { token } = req.body;
 
+  console.log("🔍 Verify endpoint called with token:", token);
+  console.log(
+    "📦 Available tokens:",
+    Object.keys(global.telegramLoginTokens || {}),
+  );
+
+  if (!token) {
+    console.log("❌ No token provided");
+    return res.status(400).json({ msg: "Token is required" });
+  }
+
   const record = global.telegramLoginTokens?.[token];
 
-  if (!record || !record.verified) {
+  if (!record) {
+    console.log("❌ Token not found:", token);
+    return res.status(400).json({ msg: "Token not found or expired" });
+  }
+
+  console.log("✅ Token found. Record:", record);
+
+  if (!record.verified) {
+    console.log("❌ Token not verified yet:", token);
     return res.status(400).json({ msg: "Not verified yet" });
   }
 
-  const { username } = record;
+  const { username, chatId } = record;
+
+  console.log("✨ Token verified! Username:", username, "ChatId:", chatId);
 
   // Check or create user
   let user = await User.findOne({ email: username });
 
   if (!user) {
+    console.log("👤 Creating new user:", username);
     user = new User({
-      email: username, // you can store separately if needed
+      email: username,
       password: "telegram-auth",
     });
     await user.save();
   }
 
+  console.log("✅ User ready:", user._id);
+
   // generate JWT
   const accessToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-    expiresIn: "1d",
+    expiresIn: JWT_EXPIRES_IN,
+  });
+  const refreshToken = jwt.sign(
+    { userId: user._id },
+    process.env.JWT_REFRESH_SECRET,
+    { expiresIn: JWT_REFRESH_EXP },
+  );
+
+  if (!user.loginSessions) user.loginSessions = [];
+
+  user.loginSessions.push({
+    token: refreshToken,
+    ip: "telegram",
+    browser: "telegram",
+    os: "telegram",
+    device: "telegram",
+    location: "telegram",
+    firstLogin: new Date(),
+    lastLogin: new Date(),
   });
 
+  await user.save();
   delete global.telegramLoginTokens[token]; // cleanup
+
+  console.log("🎉 Login success for user:", username);
 
   res.json({
     msg: "Login success",
     accessToken,
+    refreshToken, // ✅ MUST
   });
 });
 router.post("/send-otp", async (req, res) => {

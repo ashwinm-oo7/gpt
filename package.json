@@ -7,6 +7,7 @@
     "start": "nodemon app.js"
   },
   "dependencies": {
+    "@express-rate-limit/tsconfig": "^1.0.2",
     "@google/genai": "^0.10.0",
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.14.0",
