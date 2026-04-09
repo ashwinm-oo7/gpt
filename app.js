@@ -76,6 +76,7 @@ app.use(
 );
 const allowedOrigins = [
   "https://mauryagpt.vercel.app",
+  "https://mauryagpt-azj8rv4cw-ashwinm-oo7s-projects.vercel.app/",
   "http://localhost:3000",
 ];
 
