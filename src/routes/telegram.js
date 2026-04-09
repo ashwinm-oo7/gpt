@@ -4,6 +4,8 @@ import TelegramUser from "../models/telegramUser.js";
 const router = express.Router();
 
 router.post("/telegram-webhook", async (req, res) => {
+  console.log("🔥 TELEGRAM HIT");
+
   res.sendStatus(200);
 
   // ✅ Process async AFTER response
@@ -13,7 +15,10 @@ router.post("/telegram-webhook", async (req, res) => {
 const handleTelegram = async (body) => {
   try {
     const message = body.message;
-    if (!message) return;
+    if (!message) {
+      console.log("No message field");
+      return;
+    }
 
     const chatId = message.chat.id;
     const username = message.from.username || `user_${message.from.id}`;
