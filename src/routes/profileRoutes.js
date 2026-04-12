@@ -14,7 +14,7 @@ const router = express.Router();
 
 router.get("/me", authMiddleware, getProfile);
 
-router.put("/", authMiddleware, updateProfile);
+router.put("/update", authMiddleware, updateProfile);
 
 router.post("/change-password/send-otp", authMiddleware, sendPasswordOtp);
 

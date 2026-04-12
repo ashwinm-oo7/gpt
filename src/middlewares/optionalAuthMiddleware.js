@@ -26,7 +26,12 @@ export const authMiddleware = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const user = await User.findById(decoded.userId).select("-password");
-    console.log("Decoded JWT:", token, decoded);
+    // console.log("Decoded JWT:", token, decoded);
+    if (user.isBlocked) {
+      return res.status(403).json({
+        msg: "Your account is blocked by admin",
+      });
+    }
     if (!user) {
       return res.status(401).json({ msg: "User not found" });
     }

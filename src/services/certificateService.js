@@ -1,4 +1,5 @@
 import Exam from "../models/Exam.js";
+import User from "../models/user.js";
 import {
   generateCertificate,
   generateCertificateMobile,
@@ -14,19 +15,27 @@ export const downloadCertificateService = async (req, res) => {
   //     level: Number(level),
   //     certificateEligible: true,
   //   });
+
   const exam = await Exam.findOne({
     certificateId,
     certificateEligible: true,
   }).populate({
     path: "user",
-    select: "name email",
+    select: "name email nameLocked",
     options: { lean: true },
   });
+  // console.log("userdata", exam.user?.nameLocked);
+
+  if (!exam.user?.nameLocked) {
+    return res.status(400).json({
+      msg: "Name must be locked before generating certificate",
+    });
+  }
+
   const userData = {
     name: exam.user?.name,
     email: exam.user?.email,
   };
-  console.log("userdata", userData);
   if (!exam) {
     return res.status(403).json({
       message: "Certificate not available",

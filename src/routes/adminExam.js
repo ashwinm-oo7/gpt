@@ -1,7 +1,7 @@
 import express from "express";
 import Exam from "../models/Exam.js";
 import Mcq from "../models/mcq.js";
-// import User from "../models/user.js";
+import User from "../models/user.js";
 import {
   authMiddleware,
   adminOnly,

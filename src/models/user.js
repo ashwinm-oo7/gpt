@@ -7,6 +7,21 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   phone: String,
   address: String,
+  nameLocked: {
+    type: Boolean,
+    default: false,
+  },
+
+  nameLockedAt: {
+    type: Date,
+  },
+
+  nameHistory: [
+    {
+      name: String,
+      changedAt: Date,
+    },
+  ],
   education: [
     {
       level: String,
@@ -43,6 +58,10 @@ const userSchema = new mongoose.Schema({
   refreshToken: {
     type: String,
   },
+  isBlocked: {
+    type: Boolean,
+    default: false,
+  },
   loginSessions: [
     {
       ip: String,
@@ -60,6 +79,18 @@ const userSchema = new mongoose.Schema({
       domain: String,
       level: Number,
       badge: String,
+    },
+  ],
+  nameLockedByAdmin: {
+    type: Boolean,
+    default: false,
+  },
+
+  nameLockHistory: [
+    {
+      action: String, // LOCK / UNLOCK
+      by: String, // admin email or id
+      at: Date,
     },
   ],
 });

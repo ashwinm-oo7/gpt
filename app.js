@@ -17,6 +17,7 @@ import mcqRoutes from "./src/routes/mcqRoutes.js";
 import examRoutes from "./src/routes/exam.js";
 import adminExamRoutes from "./src/routes/adminExam.js";
 import telegramRoutes from "./src/routes/telegram.js";
+import adminUserRoutes from "./src/routes/adminUser.js";
 const app = express();
 const server = http.createServer(app);
 const io = initSocket(server);
@@ -116,6 +117,8 @@ app.use("/api/mcq", mcqRoutes);
 app.use("/api/exam", examRoutes);
 app.use("/api/admin/exams", adminExamRoutes);
 app.use("/auth", telegramRoutes);
+
+app.use("/api/admin/users", adminUserRoutes);
 // Start the server
 // Socket.IO connection logging
 

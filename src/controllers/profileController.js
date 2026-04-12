@@ -41,25 +41,51 @@ export const updateProfile = async (req, res) => {
       workExperiences,
       hobbies,
       skills,
-      careerObjective, // add these if you use them
+      careerObjective,
+      nameLocked, // 👈 from frontend
     } = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      req.userId,
-      {
-        name,
-        phone,
-        address,
-        education,
-        workExperiences,
-        hobbies,
-        skills,
-        careerObjective,
-      },
-      { new: true, runValidators: true },
-    );
+    const user = await User.findById(req.userId);
 
-    if (!user) return res.status(404).json({ msg: "User not found" });
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // 🔥 1. NAME LOCK PROTECTION
+    if (user.nameLocked) {
+      if (name && name !== user.name) {
+        return res.status(403).json({
+          msg: "Name is locked and cannot be changed",
+        });
+      }
+    }
+
+    // 🔥 2. NAME CHANGE TRACKING (before lock)
+    if (!user.nameLocked && name && name !== user.name) {
+      user.nameHistory.push({
+        name: user.name,
+        changedAt: new Date(),
+      });
+
+      user.name = name;
+    }
+
+    // 🔥 3. LOCK NAME (ONE TIME ONLY)
+    if (!user.nameLocked && nameLocked === true) {
+      user.nameLocked = true;
+      user.nameLockedAt = new Date();
+    }
+
+    // 🔥 4. NORMAL FIELDS UPDATE
+    user.phone = phone;
+    user.address = address;
+    user.education = education;
+    user.workExperiences = workExperiences;
+    user.hobbies = hobbies;
+    user.skills = skills;
+    user.careerObjective = careerObjective;
+
+    await user.save();
 
     res.json(user);
   } catch (error) {

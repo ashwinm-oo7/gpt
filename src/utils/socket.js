@@ -5,13 +5,15 @@ let io;
 export const initSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: "*",
+      origin: "*", // you can restrict later
+      methods: ["GET", "POST"],
     },
   });
 
   io.on("connection", (socket) => {
     console.log("✅ Client connected:", socket.id);
 
+    // 🔥 ADMIN JOIN ROOM
     socket.on("joinAdmin", () => {
       socket.join("admins");
       console.log("👑 Admin joined:", socket.id);

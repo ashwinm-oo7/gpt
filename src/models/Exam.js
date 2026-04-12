@@ -35,7 +35,10 @@ const examSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-
+    isReset: {
+      type: Boolean,
+      default: false,
+    },
     certificateIssuedAt: Date,
 
     submitted: { type: Boolean, default: false },
