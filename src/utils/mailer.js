@@ -14,7 +14,73 @@ oAuth2Client.setCredentials({
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const BASE_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const gmail = google.gmail({
+  version: "v1",
+  auth: oAuth2Client,
+});
+export const getInbox = async () => {
+  try {
+    const res = await gmail.users.messages.list({
+      userId: "me",
+      maxResults: 20,
+    });
 
+    return res.data.messages || [];
+  } catch (err) {
+    console.error("Inbox fetch error:", err);
+    return [];
+  }
+};
+const getBody = (payload) => {
+  let body = "";
+
+  const findPart = (parts) => {
+    for (let p of parts) {
+      if (p.mimeType === "text/html" && p.body?.data) {
+        return p.body.data;
+      }
+
+      if (p.mimeType === "text/plain" && p.body?.data) {
+        return p.body.data;
+      }
+
+      if (p.parts) {
+        const nested = findPart(p.parts);
+        if (nested) return nested;
+      }
+    }
+    return null;
+  };
+
+  if (payload.parts) {
+    body = findPart(payload.parts);
+  } else if (payload.body?.data) {
+    body = payload.body.data;
+  }
+
+  return body ? Buffer.from(body, "base64").toString("utf-8") : "";
+};
+export const getEmailDetails = async (id) => {
+  const res = await gmail.users.messages.get({
+    userId: "me",
+    id,
+  });
+
+  const headers = res.data.payload.headers;
+
+  const getHeader = (name) => headers.find((h) => h.name === name)?.value;
+
+  const body = getBody(res.data.payload);
+
+  return {
+    id,
+    subject: getHeader("Subject"),
+    from: getHeader("From"),
+    date: getHeader("Date"),
+    snippet: res.data.snippet,
+    body,
+  };
+};
 // Create reusable transporter
 const transporterWAITS = nodemailer.createTransport({
   service: "gmail",

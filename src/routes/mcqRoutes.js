@@ -5,7 +5,6 @@ import {
   authMiddleware,
 } from "../middlewares/optionalAuthMiddleware.js";
 import multer from "multer";
-import XLSX from "xlsx";
 import fs from "fs";
 
 const router = express.Router();
@@ -15,10 +14,154 @@ dotenv.config();
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import mongoose from "mongoose";
 import Exam from "../models/Exam.js";
+import XLSX from "xlsx-js-style";
 
 // The client will automatically use the GEMINI_API_KEY environment variable
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+router.get("/export", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { domain, level } = req.query;
+
+    let filter = {};
+    if (domain) filter.domain = domain;
+    if (level) filter.level = Number(level);
+
+    const mcqs = await Mcq.find(filter).lean();
+
+    if (!mcqs.length) {
+      return res.status(404).json({ message: "No data found" });
+    }
+
+    // 👉 Group by domain
+    const grouped = mcqs.reduce((acc, mcq) => {
+      if (!acc[mcq.domain]) acc[mcq.domain] = [];
+      acc[mcq.domain].push(mcq);
+      return acc;
+    }, {});
+
+    const workbook = XLSX.utils.book_new();
+
+    Object.keys(grouped).forEach((domainName) => {
+      const data = grouped[domainName].map((m) => ({
+        Domain: m.domain,
+        Level: m.level,
+        Step: m.step,
+        Question: m.question,
+        OptionA: m.options[0],
+        OptionB: m.options[1],
+        OptionC: m.options[2],
+        OptionD: m.options[3],
+        Answer: m.correctAnswer,
+        Explanation: m.explanation,
+      }));
+
+      const headers = Object.keys(data[0]);
+
+      // 👉 Create sheet with headers manually
+      const worksheet = XLSX.utils.aoa_to_sheet([headers]);
+
+      XLSX.utils.sheet_add_json(worksheet, data, {
+        origin: "A2",
+        skipHeader: true,
+      });
+
+      const range = XLSX.utils.decode_range(worksheet["!ref"]);
+
+      // ===============================
+      // 🎨 HEADER STYLE
+      // ===============================
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const cell = XLSX.utils.encode_cell({ r: 0, c: col });
+
+        if (worksheet[cell]) {
+          worksheet[cell].s = {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "4F46E5" } },
+            alignment: { horizontal: "center", vertical: "center" },
+            border: {
+              top: { style: "thin" },
+              bottom: { style: "thin" },
+              left: { style: "thin" },
+              right: { style: "thin" },
+            },
+          };
+        }
+      }
+
+      // ===============================
+      // 🎨 ROW STYLING (Zebra + Borders)
+      // ===============================
+      for (let row = 1; row <= range.e.r; row++) {
+        for (let col = range.s.c; col <= range.e.c; col++) {
+          const cell = XLSX.utils.encode_cell({ r: row, c: col });
+
+          if (worksheet[cell]) {
+            worksheet[cell].s = {
+              fill: {
+                fgColor: {
+                  rgb: row % 2 === 0 ? "F9FAFB" : "FFFFFF",
+                },
+              },
+              border: {
+                top: { style: "thin" },
+                bottom: { style: "thin" },
+                left: { style: "thin" },
+                right: { style: "thin" },
+              },
+            };
+          }
+        }
+      }
+
+      // ===============================
+      // 📌 FREEZE HEADER (WORKING)
+      // ===============================
+      worksheet["!views"] = [
+        {
+          state: "frozen",
+          xSplit: 0,
+          ySplit: 1,
+          topLeftCell: "A2",
+        },
+      ];
+
+      // ===============================
+      // 🔍 FILTER
+      // ===============================
+      worksheet["!autofilter"] = {
+        ref: worksheet["!ref"],
+      };
+
+      // ===============================
+      // 📏 COLUMN WIDTH
+      // ===============================
+      worksheet["!cols"] = headers.map((h) => ({
+        wch: h.length > 15 ? 30 : 20,
+      }));
+
+      // ===============================
+      // 📄 ADD SHEET
+      // ===============================
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        domainName.substring(0, 31), // Excel limit
+      );
+    });
+
+    const filePath = `uploads/mcqs_${Date.now()}.xlsx`;
+
+    XLSX.writeFile(workbook, filePath);
+
+    res.download(filePath, () => {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    });
+  } catch (err) {
+    console.error("Export error:", err);
+    res.status(500).json({ message: "Export failed" });
+  }
+});
 router.post(
   "/bulk-upload",
   authMiddleware,

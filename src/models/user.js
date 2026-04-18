@@ -50,11 +50,6 @@ const userSchema = new mongoose.Schema({
   otp: String,
   otpExpiry: Date,
   // 🔥 NEW: Role for Admin
-  role: {
-    type: String,
-    enum: ["user", "admin"],
-    default: "user",
-  },
   refreshToken: {
     type: String,
   },
@@ -93,6 +88,19 @@ const userSchema = new mongoose.Schema({
       at: Date,
     },
   ],
+  role: {
+    type: String,
+    enum: ["user", "admin", "moderator", "analyst", "custom"],
+    default: "user",
+  },
+
+  permissions: {
+    canBlockUser: { type: Boolean, default: false },
+    canResetAttempts: { type: Boolean, default: false },
+    canViewActivity: { type: Boolean, default: false },
+    canManageExams: { type: Boolean, default: false },
+    canManagePermissions: { type: Boolean, default: false },
+  },
 });
 
 // Export the model using ES module syntax

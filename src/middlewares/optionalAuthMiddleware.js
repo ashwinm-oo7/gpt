@@ -27,13 +27,13 @@ export const authMiddleware = async (req, res, next) => {
 
     const user = await User.findById(decoded.userId).select("-password");
     // console.log("Decoded JWT:", token, decoded);
+    if (!user) {
+      return res.status(401).json({ msg: "User not found" });
+    }
     if (user.isBlocked) {
       return res.status(403).json({
         msg: "Your account is blocked by admin",
       });
-    }
-    if (!user) {
-      return res.status(401).json({ msg: "User not found" });
     }
 
     req.user = user; // now req.user._id and req.user.role work everywhere

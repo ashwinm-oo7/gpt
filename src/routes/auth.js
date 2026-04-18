@@ -28,6 +28,7 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
 const JWT_REFRESH_EXP = process.env.JWT_REFRESH_EXP || "7d";
 const isProduction = process.env.NODE_ENV === "production";
 import crypto from "crypto";
+import { logActivity } from "../utils/activityLogger.js";
 
 const loginLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
@@ -246,6 +247,11 @@ router.post("/login", loginLimiter, async (req, res) => {
       console.log("User not found");
       return res.status(400).json({ msg: "Invalid credentials" });
     }
+    if (user?.isBlocked) {
+      return res.status(403).json({
+        msg: "Your account is blocked by admin.\n Contact Support!!!",
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -361,6 +367,11 @@ router.post("/login", loginLimiter, async (req, res) => {
     //   maxAge: Number(REFRESH_TOKEN_MAX_AGE),
     //   path: "/",
     // });
+    await logActivity({
+      userId: user._id,
+      action: "LOGIN",
+      req,
+    });
     res.json({
       msg: "Login successful",
       accessToken,
@@ -387,7 +398,7 @@ router.post("/refresh", async (req, res) => {
     const decoded = jwt.verify(token, REFRESH_SECRET);
 
     const user = await User.findById(decoded.userId);
-    // console.log("user.loginSessions", user);
+    console.log("user.loginSessions", token);
     if (!user || !user.loginSessions) {
       return res.status(403).json({ msg: "Invalid refresh token" });
     }

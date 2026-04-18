@@ -20,6 +20,7 @@ const certLimiter = rateLimit({
 import fs from "fs";
 import { downloadCertificateService } from "../services/certificateService.js";
 import { getIO } from "../utils/socket.js";
+import { logActivity } from "../utils/activityLogger.js";
 const certificateTemplate = path.resolve("src/assets/certificate-template.png");
 const signatureImage = path.resolve("src/assets/signature.png");
 const sealImage = path.resolve("src/assets/seal.png");
@@ -97,6 +98,12 @@ router.post("/start", authMiddleware, async (req, res) => {
       message: `${req.user?.name || "User"} started ${domain} Level ${level}`,
       examId: exam._id,
       createdAt: new Date(),
+    });
+    await logActivity({
+      userId: userId,
+      action: "EXAM_START",
+      metadata: { domain, level },
+      req,
     });
     res.json({ examId: exam._id });
   } catch (err) {
@@ -213,7 +220,16 @@ router.post("/submit/:examId", authMiddleware, async (req, res) => {
       percentage,
       createdAt: new Date(),
     });
-
+    await logActivity({
+      userId: req.user._id,
+      action: "EXAM_SUBMIT",
+      metadata: {
+        domain: exam.domain,
+        level: exam.level,
+        score: exam.score,
+      },
+      req,
+    });
     // ✅ RESPONSE
     return res.json({
       message: "Exam submitted successfully",
